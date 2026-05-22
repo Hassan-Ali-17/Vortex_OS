@@ -1,84 +1,105 @@
 # terminal/shell.py
-# VORTEX OS - Core Shell Loop
-# This is the heart of the terminal. It reads input, calls commands.
+# VORTEX OS - Core Shell Loop (Phase 2 Refactor)
+# Now delegates parsing and routing to dedicated classes.
 
 import json
 import os
 
 from themes.colors import COLORS
+from terminal.parser import CommandParser
+from terminal.router import CommandRouter
+
+# Phase 1 commands
 from commands.builtin_commands import (
     cmd_help,
     cmd_clock,
     cmd_clear,
     cmd_system,
     cmd_exit,
-    cmd_version,    
+    cmd_version,
     cmd_whoami,
+)
+
+# Phase 2 commands
+from commands.system_commands import (
+    cmd_vault,
+    cmd_scan,
+    cmd_apps,
+    cmd_ignite,
+    cmd_open,
 )
 
 
 class VortexShell:
     """
-    The main VORTEX terminal shell.
+    VORTEX terminal shell — Phase 2.
     
-    Responsibilities:
-    - Load configuration
-    - Display the startup banner
-    - Run the input loop
-    - Route commands to handler functions
-    - Handle unknown commands and errors
+    Changes from Phase 1:
+    - Uses CommandParser for input parsing + alias resolution
+    - Uses CommandRouter for command dispatch
+    - Shell itself is now thin — just the loop and display
     """
 
     def __init__(self, config_path="config/settings.json"):
-        """
-        Constructor — runs when we create a VortexShell object.
-        Loads the JSON config file immediately.
-        """
         self.config = self._load_config(config_path)
         
-        # The prompt string shown before every input
-        self.prompt = self.config.get("prompt", "[VORTEX@CORE] > ")
+        # Create parser (handles input + aliases)
+        self.parser = CommandParser(aliases_path="config/aliases.json")
         
-        # Command registry — maps typed words to functions
-        # This is the key design pattern: dict lookup instead of if/elif chains
-        self.commands = {
-            "help":   cmd_help,
-            "clock":  cmd_clock,
-            "clear":  cmd_clear,
-            "system": cmd_system,
-            "exit":   cmd_exit,
-            "quit":   cmd_exit, 
-            "version": cmd_version, 
-            "whoami": cmd_whoami, # alias for exit
-        }
+        # Create router (handles dispatch)
+        self.router = CommandRouter()
+        
+        # Register all commands with the router
+        self._register_commands()
 
     def _load_config(self, path):
-        """
-        Private method (notice the underscore prefix).
-        Reads and parses the JSON config file.
-        Returns the config dict, or defaults if file not found.
-        """
         try:
             with open(path, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"{COLORS.WARNING}[WARN] Config file not found. Using defaults.{COLORS.RESET}")
+            print(f"{COLORS.WARNING}[WARN] Config not found. Using defaults.{COLORS.RESET}")
             return {
                 "os_name": "VORTEX OS",
                 "version": "0.1.0",
                 "codename": "GENESIS",
-                "prompt": "[VORTEX@CORE] > "
+                "prompt": "[VORTEX@CORE] > ",
+                "banner": {}
             }
 
-    def _print_banner(self):
-    
-     banner_cfg = self.config.get("banner", {})
-     show_ascii  = banner_cfg.get("show_ascii", True)
-     tagline     = banner_cfg.get("tagline", "")
-     show_hints  = banner_cfg.get("show_hints", True)
+    def _register_commands(self):
+        """
+        Registers all commands with the router.
+        This is the ONE place where commands are declared.
+        Adding a new command = adding one line here.
+        """
+        self.router.register_many({
+            # name:        (handler,      description)
+            "help":        (cmd_help,     "Show command reference"),
+            "clock":       (cmd_clock,    "Show time | clock live for live mode"),
+            "clear":       (cmd_clear,    "Clear the terminal screen"),
+            "system":      (cmd_system,   "Show system hardware info"),
+            "exit":        (cmd_exit,     "Exit VORTEX terminal"),
+            "quit":        (cmd_exit,     "Exit VORTEX terminal"),
+            "version":     (cmd_version,  "Show VORTEX OS version"),
+            "whoami":      (cmd_whoami,   "Show current user identity"),
+            "vault":       (cmd_vault,    "Filesystem explorer"),
+            "scan":        (cmd_scan,     "System & network scanner"),
+            "apps":        (cmd_apps,     "List VORTEX applications"),
+            "ignite":      (cmd_ignite,   "Power control (restart/shutdown/reboot)"),
+            "open":        (cmd_open,     "Launch apps or URLs"),
+        })
+        
+        self.config["_router"] = self.router
 
-     if show_ascii:
-        ascii_art = f"""
+
+    def _print_banner(self):
+        banner_cfg  = self.config.get("banner", {})
+        show_ascii  = banner_cfg.get("show_ascii", True)
+        tagline     = banner_cfg.get("tagline", "")
+        show_hints  = banner_cfg.get("show_hints", True)
+
+        if show_ascii:
+            print(f"""
 {COLORS.PRIMARY}{COLORS.BOLD}
 ██╗   ██╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
 ██║   ██║██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝
@@ -86,104 +107,48 @@ class VortexShell:
 ╚██╗ ██╔╝██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗ 
  ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
   ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
-{COLORS.RESET}"""
-        print(ascii_art)
+{COLORS.RESET}""")
 
-     print(f"  {COLORS.ACCENT}◈ {self.config['os_name']} v{self.config['version']} [{self.config['codename']}]{COLORS.RESET}")
+        print(f"  {COLORS.ACCENT}◈ {self.config['os_name']} v{self.config['version']} [{self.config['codename']}]{COLORS.RESET}")
 
-     if tagline:
-        print(f"  {COLORS.DIM}{tagline}{COLORS.RESET}")
+        if tagline:
+            print(f"  {COLORS.DIM}{tagline}{COLORS.RESET}")
 
-     if show_hints:
-        print(f"\n  {COLORS.DIM}Type 'help' to see available commands.{COLORS.RESET}")
-        print(f"  {COLORS.DIM}Type 'exit' to quit.{COLORS.RESET}")
+        if show_hints:
+            print(f"\n  {COLORS.DIM}Type 'help' to see available commands.{COLORS.RESET}")
+            print(f"  {COLORS.DIM}Type 'exit' to quit.{COLORS.RESET}")
 
-    print()
-
-    def _parse_input(self, raw_input):
-        """
-        Splits raw typed input into command + arguments.
-        
-        Example:
-            'open browser'  → ('open', ['browser'])
-            'theme neon'    → ('theme', ['neon'])
-            'help'          → ('help', [])
-            '  '            → (None, [])
-        """
-        # Strip leading/trailing whitespace
-        cleaned = raw_input.strip()
-        
-        # Empty input → return nothing
-        if not cleaned:
-            return None, []
-        
-        # Split on spaces
-        parts = cleaned.split()
-        
-        # First word is the command, rest are arguments
-        command = parts[0].lower()
-        args = parts[1:]
-        
-        return command, args
+        print()
 
     def run(self):
-        """
-        The main shell loop.
-        This runs forever until the user types 'exit'.
-        """
-        # Show the banner first
+        """Main shell loop — now much simpler than Phase 1."""
         self._print_banner()
 
-        # Infinite loop — the shell keeps running
         while True:
             try:
-                # Print prompt and wait for input
-                # end='' and flush=True ensure prompt shows on same line
-                 # Get current directory, replace /home/username with ~ for cleanliness
-                 cwd = os.getcwd()
-                 home = os.path.expanduser("~")
+                # Dynamic prompt with current directory
+                cwd  = os.getcwd()
+                home = os.path.expanduser("~")
+                if cwd.startswith(home):
+                    cwd = "~" + cwd[len(home):]
+                prompt = f"[VORTEX@CORE {cwd}] > "
 
-# If we're inside the home directory, show ~ instead of full path
-                 if cwd.startswith(home):
-                   cwd = "~" + cwd[len(home):]
-
-# Build dynamic prompt with directory injected
-                 dynamic_prompt = f"[VORTEX@CORE {cwd}] > "
-
-                 raw = input(f"{COLORS.PRIMARY}{dynamic_prompt}{COLORS.RESET}")
+                raw = input(f"{COLORS.PRIMARY}{prompt}{COLORS.RESET}")
 
             except KeyboardInterrupt:
-                # User pressed Ctrl+C — don't crash, just show a message
-                print(f"\n{COLORS.WARNING}  [!] Use 'exit' to quit VORTEX.{COLORS.RESET}")
+                print(f"\n{COLORS.WARNING}  [!] Use 'exit' to quit.{COLORS.RESET}")
                 continue
-
             except EOFError:
-                # User pressed Ctrl+D — treat as exit
-                print()
                 break
 
-            # Parse what was typed
-            command, args = self._parse_input(raw)
+            # Parse input (handles aliases, quoting, etc.)
+            parsed = self.parser.parse(raw)
 
-            # Empty input — just show the prompt again
-            if command is None:
+            if parsed is None:
                 continue
 
-            # Look up the command in our registry
-            if command in self.commands:
-                try:
-                    # Call the command function, pass args and config
-                    result = self.commands[command](args, self.config)
-                    
-                    # If the function returned "EXIT", break the loop
-                    if result == "EXIT":
-                        break
+            # Route and execute
+            result = self.router.execute(parsed, self.config)
 
-                except Exception as e:
-                    # Something crashed inside the command — catch it gracefully
-                    print(f"{COLORS.ERROR}  [ERROR] Command '{command}' failed: {e}{COLORS.RESET}")
-
-            else:
-                # Command not found
-                print(f"\n{COLORS.ERROR}  [!] Unknown command: '{command}'{COLORS.RESET}")
-                print(f"{COLORS.DIM}  Type 'help' to see available commands.{COLORS.RESET}\n")
+            if result == "EXIT":
+                break
