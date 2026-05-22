@@ -1,0 +1,14 @@
+{
+    "os_name": "VORTEX OS",
+    "version": "0.1.0",
+    "codename": "GENESIS",
+    "prompt": "[VORTEX@CORE] > ",
+    "author": "Hassan Ali Shah",
+    "terminal_title": "VORTEX TERMINAL",
+    "default_theme": "cyberpunk",
+    "banner": {
+        "show_ascii": true,
+        "tagline": "INITIALIZE. DOMINATE. EVOLVE.",
+        "show_hints": true
+    }
+}
