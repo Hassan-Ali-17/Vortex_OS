@@ -4,7 +4,8 @@
 
 import json
 import os
-
+from terminal.history import HistoryManager
+from commands.theme_commands import cmd_theme, cmd_history
 from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
@@ -41,17 +42,15 @@ class VortexShell:
     """
 
     def __init__(self, config_path="config/settings.json"):
-        self.config = self._load_config(config_path)
-        
-        # Create parser (handles input + aliases)
-        self.parser = CommandParser(aliases_path="config/aliases.json")
-        
-        # Create router (handles dispatch)
-        self.router = CommandRouter()
-        
-        # Register all commands with the router
-        self._register_commands()
+     self.config = self._load_config(config_path)
+     self.parser = CommandParser(aliases_path="config/aliases.json")
+     self.router = CommandRouter()
 
+    # Create history manager and inject into config
+     self.history = HistoryManager()
+     self.config["_history"] = self.history      # ← ADD
+ 
+     self._register_commands()
     def _load_config(self, path):
         try:
             with open(path, 'r') as f:
@@ -87,6 +86,8 @@ class VortexShell:
             "apps":        (cmd_apps,     "List VORTEX applications"),
             "ignite":      (cmd_ignite,   "Power control (restart/shutdown/reboot)"),
             "open":        (cmd_open,     "Launch apps or URLs"),
+            "theme":       (cmd_theme,   "Switch color themes"),
+            "history":     (cmd_history, "View or clear command history"),
         })
 
         self.config["_router"] = self.router
@@ -133,6 +134,9 @@ class VortexShell:
                 prompt = f"[VORTEX@CORE {cwd}] > "
 
                 raw = input(f"{COLORS.PRIMARY}{prompt}{COLORS.RESET}")
+                
+                if raw.strip():
+                  self.history.add(raw.strip())     # ← ADD THIS LINE
 
             except KeyboardInterrupt:
                 print(f"\n{COLORS.WARNING}  [!] Use 'exit' to quit.{COLORS.RESET}")

@@ -10,7 +10,9 @@
         "me":    "whoami",
         "boot":  "ignite",
         "heck":  "scan",
-        "ping":  "scan network"
+        "ping":  "scan network",
+        "th":   "theme",
+        "hist": "history"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

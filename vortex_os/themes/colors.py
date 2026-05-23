@@ -1,48 +1,23 @@
 # themes/colors.py
-# VORTEX OS - Color Theme Engine (Phase 1: Basic Colors)
-# Uses colorama for cross-platform terminal color support
+# VORTEX OS - Color Module (Phase 3+)
+# Now delegates to the theme engine.
+# Other files that import from here still work unchanged.
 
-from colorama import Fore, Back, Style, init
+from themes.theme_engine import COLORS, get_engine
 
-# Initialize colorama
-# auto_reset=True means colors reset automatically after each print
+# Keep this for any code that imports CyberpunkColors directly
+from colorama import Fore, Style, init
 init(autoreset=True)
 
 
 class CyberpunkColors:
-    """
-    Cyberpunk color palette for VORTEX OS terminal.
-    All colors are defined as class attributes so they can be
-    accessed like: CyberpunkColors.PRIMARY
-    """
-
-    # Primary interface color - cyan/electric blue
-    PRIMARY   = Fore.CYAN
-    
-    # Success messages, confirmations
-    SUCCESS   = Fore.GREEN
-    
-    # Warnings, important notices
-    WARNING   = Fore.YELLOW
-    
-    # Errors, failures
-    ERROR     = Fore.RED
-    
-    # Highlighted text, titles
-    ACCENT    = Fore.MAGENTA
-    
-    # Normal body text (white)
-    TEXT      = Fore.WHITE
-    
-    # Dimmed text, secondary info
-    DIM       = Fore.LIGHTBLACK_EX
-    
-    # Bold styling
-    BOLD      = Style.BRIGHT
-    
-    # Reset all styling
-    RESET     = Style.RESET_ALL
-
-
-# Convenience shortcut — other files can just import COLORS
-COLORS = CyberpunkColors()
+    """Legacy compatibility class. Use COLORS from theme_engine instead."""
+    PRIMARY = Fore.CYAN
+    SUCCESS = Fore.GREEN
+    WARNING = Fore.YELLOW
+    ERROR   = Fore.RED
+    ACCENT  = Fore.MAGENTA
+    TEXT    = Fore.WHITE
+    DIM     = Fore.LIGHTBLACK_EX
+    BOLD    = Style.BRIGHT
+    RESET   = Style.RESET_ALL
