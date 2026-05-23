@@ -1,0 +1,15 @@
+{
+    "aliases": {
+        "q":     "exit",
+        "h":     "help",
+        "v":     "version",
+        "cls":   "clear",
+        "top":   "system",
+        "time":  "clock",
+        "ls":    "vault list",
+        "me":    "whoami",
+        "boot":  "ignite",
+        "heck":  "scan"
+    },
+    "description": "User-defined command aliases for VORTEX OS"
+}

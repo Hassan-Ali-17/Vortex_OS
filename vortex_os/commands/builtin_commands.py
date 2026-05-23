@@ -43,30 +43,38 @@ from themes.colors import COLORS
 def cmd_help(args, config):
     """
     Command: help
-    Shows all available commands with descriptions.
-    'config' is passed in so we can display the OS name.
+    Now accepts an optional router reference via config.
+    Falls back to static list if router not available.
     """
-    print(f"\n{COLORS.ACCENT}{COLORS.BOLD}{'='*50}")
+    print(f"\n{COLORS.ACCENT}{COLORS.BOLD}{'='*52}")
     print(f"  {config['os_name']} v{config['version']} — COMMAND REFERENCE")
-    print(f"{'='*50}{COLORS.RESET}")
+    print(f"{'='*52}{COLORS.RESET}")
 
-    # Each entry: (command_name, description)
-    commands = [
-        ("help",    "Show this help menu"),
-        ("clock",   "Display current date and time"),
-        ("clear",   "Clear the terminal screen"),
-        ("system",  "Show system information"),
-        ("version", "Show VORTEX OS version"),
-        ("whoami",  "Show current user identity"),
-        ("exit",    "Exit VORTEX terminal"),
-    ]
+    # If router was injected into config, use live registry
+    router = config.get("_router")
+    if router:
+        commands = router.get_all_commands()
+    else:
+        # Fallback static list
+        commands = [
+            ("apps",    "List VORTEX applications"),
+            ("clear",   "Clear the terminal screen"),
+            ("clock",   "Show time | clock live for live mode"),
+            ("exit",    "Exit VORTEX terminal"),
+            ("help",    "Show this help menu"),
+            ("ignite",  "Power control"),
+            ("open",    "Launch apps or URLs"),
+            ("scan",    "System & network scanner"),
+            ("system",  "Show system hardware info"),
+            ("vault",   "Filesystem explorer"),
+            ("version", "Show VORTEX OS version"),
+            ("whoami",  "Show current user identity"),
+        ]
 
     for cmd, desc in commands:
-        # Left-align the command name in a 12-char wide column
-        print(f"  {COLORS.PRIMARY}{cmd:<12}{COLORS.TEXT}{desc}")
+        print(f"  {COLORS.PRIMARY}{cmd:<14}{COLORS.TEXT}{desc}")
 
-    print(f"\n{COLORS.DIM}  More commands coming in future phases...{COLORS.RESET}\n")
-
+    print(f"\n{COLORS.DIM}  Aliases: q=exit  h=help  cls=clear  ls=vault list  me=whoami{COLORS.RESET}\n")
 @with_timestamp
 def cmd_clock(args, config):
     """
