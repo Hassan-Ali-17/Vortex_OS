@@ -6,6 +6,8 @@ import json
 import os
 from terminal.history import HistoryManager
 from commands.theme_commands import cmd_theme, cmd_history
+# Add to imports in terminal/shell.py
+from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets
 from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
@@ -88,6 +90,9 @@ class VortexShell:
             "open":        (cmd_open,     "Launch apps or URLs"),
             "theme":       (cmd_theme,   "Switch color themes"),
             "history":     (cmd_history, "View or clear command history"),
+            "clock gui":   (cmd_clock_gui,  "Launch floating clock widget"),
+            "calendar":    (cmd_calendar,   "Launch floating calendar widget"),
+            "widgets":     (cmd_widgets,    "List available widgets"),
         })
 
         self.config["_router"] = self.router

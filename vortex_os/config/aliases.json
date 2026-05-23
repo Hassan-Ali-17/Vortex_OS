@@ -11,8 +11,10 @@
         "boot":  "ignite",
         "heck":  "scan",
         "ping":  "scan network",
-        "th":   "theme",
-        "hist": "history"
+        "th":    "theme",
+        "hist":  "history",
+        "cal":  "calendar",
+        "wgt":  "widgets"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

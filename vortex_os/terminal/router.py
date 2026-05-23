@@ -89,23 +89,32 @@ class CommandRouter:
      return self._execute_single(parsed_command, config)
 
     def _execute_single(self, parsed_command, config):
-     """Executes one ParsedCommand. (Extracted from old execute())"""
-     name = parsed_command.command
+     """
+    Executes one ParsedCommand.
+    Now tries full_command first (for multi-word commands like 'clock gui'),
+    then falls back to just the first word.
+     """
+    # Try full command string first (e.g. "clock gui")
+     full = parsed_command.full_command.strip().lower()
+     if full in self._registry:
+        try:
+            return self._registry[full](parsed_command.args, config)
+        except Exception as e:
+            print(f"{COLORS.ERROR}  [ERROR] '{full}' crashed: {e}{COLORS.RESET}")
+            return None
 
+    # Fall back to first word only
+     name = parsed_command.command
      if name not in self._registry:
         print(f"\n{COLORS.ERROR}  [!] Unknown command: '{name}'{COLORS.RESET}")
         print(f"{COLORS.DIM}  Type 'help' to see available commands.{COLORS.RESET}\n")
         return None
 
-     handler = self._registry[name]
-
      try:
-        result = handler(parsed_command.args, config)
-        return result
+        return self._registry[name](parsed_command.args, config)
      except Exception as e:
         print(f"{COLORS.ERROR}  [ERROR] '{name}' crashed: {e}{COLORS.RESET}")
         return None
-
     def _execute_chain(self, chained, config):
      """
     Executes a ChainedCommand — runs each command in order.
