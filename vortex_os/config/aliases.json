@@ -9,7 +9,8 @@
         "ls":    "vault list",
         "me":    "whoami",
         "boot":  "ignite",
-        "heck":  "scan"
+        "heck":  "scan",
+        "ping":  "scan network"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

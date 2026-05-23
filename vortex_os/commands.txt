@@ -1,0 +1,16 @@
+vault                    ← list current directory
+vault list ~             ← list home directory
+vault go /tmp            ← navigate to /tmp
+vault info /etc          ← info about /etc
+scan                     ← system health with bars
+scan network             ← network interfaces
+scan disk                ← disk usage
+scan ports               ← listening ports
+apps                     ← app registry
+ignite                   ← power menu
+open browser             ← opens browser (needs desktop)
+open github.com          ← opens URL
+q                        ← alias for exit
+ls                       ← alias for vault list
+me                       ← alias for whoami
+h                        ← alias for help

@@ -30,6 +30,29 @@ class ParsedCommand:
         return (f"ParsedCommand(command={self.command!r}, "
                 f"args={self.args}, full={self.full_command!r})")
 
+class ChainedCommand:
+    """
+    Represents multiple commands joined with &&.
+    
+    Example:
+        Input:  "clock && system && whoami"
+        Result: ChainedCommand(commands=[
+                    ParsedCommand(command='clock', ...),
+                    ParsedCommand(command='system', ...),
+                    ParsedCommand(command='whoami', ...),
+                ])
+    
+    Why a separate class instead of a list?
+    Because the router checks the type of what it receives.
+    isinstance(result, ChainedCommand) is explicit and readable.
+    """
+
+    def __init__(self, commands):
+        # commands is a list of ParsedCommand objects
+        self.commands = commands
+
+    def __repr__(self):
+        return f"ChainedCommand(count={len(self.commands)}, commands={self.commands})"
 
 class CommandParser:
     """
@@ -88,38 +111,89 @@ class CommandParser:
         return raw_input
 
     def parse(self, raw_input):
-        """
-        Main parse method. Takes raw string, returns ParsedCommand or None.
-        
-        Returns None for empty input so the shell can skip gracefully.
-        """
-        if not raw_input or not raw_input.strip():
-            return None
+     """
+    Main parse method.
+    
+    Now handles command chaining with &&.
+    
+    Returns:
+        None           → empty input
+        ParsedCommand  → single command
+        ChainedCommand → multiple commands joined with &&
+    """
+     if not raw_input or not raw_input.strip():
+        return None
 
-        # Step 1: Expand aliases
-        expanded = self._expand_alias(raw_input.strip())
+    # Step 1: Check for && BEFORE alias expansion
+    # Why before? Because an alias could contain && itself in theory,
+    # and we want user-typed && to always mean chaining.
+     if "&&" in raw_input:
+        return self._parse_chained(raw_input)
 
-        # Step 2: Split into tokens
-        # We use shlex.split() instead of str.split() because it respects
-        # quoted strings. Example:
-        #   shlex.split('open "my file"') → ['open', 'my file']
-        #   str.split('open "my file"')   → ['open', '"my', 'file"']
-        try:
-            tokens = shlex.split(expanded)
-        except ValueError:
-            # shlex fails on unmatched quotes — fall back to simple split
-            tokens = expanded.split()
+    # Single command path (existing logic)
+     return self._parse_single(raw_input.strip())
 
-        if not tokens:
-            return None
+    def _parse_single(self, raw_input):
+     """
+    Parses a single command string.
+    Extracted from old parse() so chained parsing can reuse it.
+    """
+    # Expand aliases
+     expanded = self._expand_alias(raw_input.strip())
 
-        # Step 3: First token is the command, rest are args
-        command = tokens[0].lower()
-        args    = tokens[1:]
+    # Tokenize (respects quoted strings)
+     try:
+         tokens = shlex.split(expanded)
+     except ValueError:
+        tokens = expanded.split()
 
-        return ParsedCommand(
-            command=command,
-            args=args,
-            full_command=expanded,
-            raw_input=raw_input
-        )
+     if not tokens:
+        return None
+
+     command = tokens[0].lower()
+     args    = tokens[1:]
+
+     return ParsedCommand(
+        command=command,
+        args=args,
+        full_command=expanded,
+        raw_input=raw_input
+    )
+
+    def _parse_chained(self, raw_input):
+     """
+    Splits input on && and parses each fragment individually.
+    
+    Fragments that are empty (e.g. 'clock &&') are skipped.
+    Each fragment gets alias expansion independently.
+    
+    Example:
+        "ls && me && v"
+        Split  → ["ls ", " me ", " v"]
+        Parse  → [vault list, whoami, version]
+    """
+    # Split on && — each fragment is one command
+     fragments = raw_input.split("&&")
+
+     parsed_list = []
+     for fragment in fragments:
+        fragment = fragment.strip()
+
+        # Skip empty fragments (e.g. trailing &&)
+        if not fragment:
+            continue
+
+        # Parse each fragment as an individual command
+        parsed = self._parse_single(fragment)
+        if parsed is not None:
+            parsed_list.append(parsed)
+
+    # If somehow nothing parsed, return None
+     if not parsed_list:
+        return None
+
+    # Single command after splitting? Return as plain ParsedCommand
+     if len(parsed_list) == 1:
+        return parsed_list[0]
+
+     return ChainedCommand(commands=parsed_list)

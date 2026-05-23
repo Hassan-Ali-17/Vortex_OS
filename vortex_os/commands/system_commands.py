@@ -23,18 +23,6 @@ from commands.builtin_commands import with_timestamp
 
 @with_timestamp
 def cmd_vault(args, config):
-    """
-    Command: vault [subcommand] [path]
-    
-    VORTEX's filesystem explorer.
-    Subcommands:
-        vault             → list current directory
-        vault list        → list current directory
-        vault list <path> → list given path
-        vault go <path>   → navigate to path
-        vault info <path> → show details about a path
-    """
-    # No subcommand — default to listing current directory
     if not args:
         _vault_list(os.getcwd())
         return
@@ -56,10 +44,19 @@ def cmd_vault(args, config):
         path = target or os.getcwd()
         _vault_info(path)
 
+    elif subcommand == "find":          # ← ADD THIS BLOCK
+        if not target:
+            print(f"{COLORS.ERROR}  [!] Usage: vault find <name>{COLORS.RESET}\n")
+            print(f"{COLORS.DIM}  Example: vault find python{COLORS.RESET}\n")
+            return
+        # Optional third argument = start path
+        start = args[2] if len(args) > 2 else None
+        _vault_find(target, start)
+
     else:
         print(f"{COLORS.ERROR}  [!] Unknown vault subcommand: '{subcommand}'{COLORS.RESET}")
-        print(f"{COLORS.DIM}  Usage: vault | vault list | vault go <path> | vault info <path>{COLORS.RESET}\n")
-
+        print(f"{COLORS.DIM}  Usage: vault | vault list | vault go <path> "
+              f"| vault info <path> | vault find <name>{COLORS.RESET}\n")
 
 def _vault_list(path):
     """Lists directory contents with type indicators and sizes."""
@@ -140,6 +137,77 @@ def _vault_info(path):
     # Octal permissions like 755, 644
     permissions = oct(stat.st_mode)[-3:]
     print(f"  {COLORS.PRIMARY}PERMS    : {COLORS.TEXT}{permissions}")
+    print()
+
+
+def _vault_find(name_pattern, start_path=None):
+    """
+    Recursively searches for files and folders matching name_pattern.
+    
+    Args:
+        name_pattern : string to search for (case-insensitive, partial match)
+        start_path   : where to start searching (default: current directory)
+    
+    Why case-insensitive partial match?
+    Because 'find pyth' should find 'python3', 'Python.cfg', 'mypython.py'.
+    Real tools like 'find' and 'locate' work the same way.
+    """
+    if start_path is None:
+        start_path = os.getcwd()
+
+    start_path = os.path.expanduser(start_path)
+
+    if not os.path.exists(start_path):
+        print(f"{COLORS.ERROR}  [!] Start path not found: {start_path}{COLORS.RESET}\n")
+        return
+
+    pattern = name_pattern.lower()
+
+    print(f"\n{COLORS.ACCENT}{COLORS.BOLD}  ◈ VAULT FIND — '{name_pattern}'{COLORS.RESET}")
+    print(f"  {COLORS.DIM}Searching in: {start_path}{COLORS.RESET}\n")
+
+    found_count = 0
+    scanned_dirs = 0
+
+    try:
+        for root, dirs, files in os.walk(start_path):
+            scanned_dirs += 1
+
+            # Skip hidden directories (e.g. .git, .cache) — they slow
+            # down the search and rarely contain what users want
+            # We modify 'dirs' IN PLACE — os.walk respects this
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+            # Check directory names
+            for d in dirs:
+                if pattern in d.lower():
+                    full_path = os.path.join(root, d)
+                    print(f"  {COLORS.PRIMARY}  ▸ DIR   {COLORS.TEXT}{full_path}")
+                    found_count += 1
+
+            # Check file names
+            for f in files:
+                if pattern in f.lower():
+                    full_path = os.path.join(root, f)
+                    size = _format_size(os.path.getsize(full_path))
+                    print(f"  {COLORS.SUCCESS}  · FILE  {COLORS.TEXT}{full_path:<55}{COLORS.DIM}{size}")
+                    found_count += 1
+
+            # Safety limit — don't scan 10,000 dirs silently
+            if scanned_dirs > 500:
+                print(f"\n  {COLORS.WARNING}  [!] Scan limit reached (500 dirs). "
+                      f"Specify a narrower start path.{COLORS.RESET}")
+                break
+
+    except KeyboardInterrupt:
+        print(f"\n{COLORS.WARNING}  Search interrupted by user.{COLORS.RESET}")
+
+    # Summary line
+    if found_count == 0:
+        print(f"  {COLORS.DIM}No matches found for '{name_pattern}'{COLORS.RESET}")
+    else:
+        print(f"\n  {COLORS.SUCCESS}  {found_count} match(es) found "
+              f"in {scanned_dirs} directories scanned.{COLORS.RESET}")
     print()
 
 
