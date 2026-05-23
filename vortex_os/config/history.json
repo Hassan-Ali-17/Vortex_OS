@@ -9,6 +9,11 @@
     "theme",
     "theme cyberpunk",
     "clear",
+    "q",
+    "help",
+    "theme animate",
+    "clear",
+    "help",
     "q"
   ],
   "max_entries": 500

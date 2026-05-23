@@ -1,3 +1,6 @@
+//---------------------------Phase 1+2 commands--------------------------------\\
+
+
 vault                    ← list current directory
 vault list ~             ← list home directory
 vault go /tmp            ← navigate to /tmp
@@ -14,3 +17,23 @@ q                        ← alias for exit
 ls                       ← alias for vault list
 me                       ← alias for whoami
 h                        ← alias for help
+
+
+//---------------------------Phase 3 commands--------------------------------\\
+
+theme                  ← list all 6 themes
+theme matrix           ← switch to green matrix theme
+theme blood            ← switch to red theme
+theme solar            ← switch to amber theme
+theme arctic           ← switch to ice blue
+theme preview          ← color swatch of active theme
+theme cyberpunk        ← back to default
+history                ← show last 15 commands
+history 5              ← show last 5
+history clear          ← wipe history
+↑ ↑ ↑                  ← arrow keys navigate history
+th solar               ← alias for theme
+hist                   ← alias for history
+theme animate          ← shows all themes 1 by 1 
+history <word>         ← shows the word in history array 
+   

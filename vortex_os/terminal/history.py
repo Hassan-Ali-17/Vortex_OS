@@ -113,6 +113,10 @@ class HistoryManager:
     def get_recent(self, n=10):
         """Returns the last n commands."""
         return self._history[-n:]
+    
+    def get_all(self):
+     """Returns the complete history list."""
+     return list(self._history)
 
     def clear(self):
         """Clears all history."""
