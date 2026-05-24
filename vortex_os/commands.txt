@@ -41,13 +41,26 @@ history <word>         ← shows the word in history array
 
 
 Keyboard shortcuts:
-Ctrl+T      ← toggle embedded terminal
-F11         ← toggle fullscreen / windowed
-Ctrl+Q      ← close desktop (console terminal stays alive)
-ESC         ← close clock/calendar floating widgets
+Ctrl+T       ← toggle embedded terminal
+F11          ← toggle fullscreen / windowed
+Ctrl+Q       ← close desktop (console terminal stays alive)
+ctrl+shift+Q ← closes the whole desktop plus the terminal
+ESC          ← close clock/calendar floating widgets
 Click interactions:
 ▶ (sidebar)  ← open terminal
 ◉ (sidebar)  ← open clock widget
 ◈ (sidebar)  ← open calendar widget
 ⚡ (sidebar)  ← open terminal pre-filled with 'scan'
 ◐ (sidebar)  ← open terminal pre-filled with 'theme '   
+
+//---------------------------Phase 6 commands--------------------------------\\
+
+
+Right-click desktop    ← context menu appears
+Right-click → monitor  ← system monitor opens with live graphs
+Right-click → theme    ← submenu of all 6 themes
+monitor                ← terminal command also opens monitor
+Ctrl+T                 ← terminal opens, indicator dot glows on dock
+Ctrl+T again           ← terminal hides, dot disappears
+Ctrl+Q                 ← desktop hides, console terminal lives on
+desktop                ← console command brings desktop back

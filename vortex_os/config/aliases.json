@@ -14,7 +14,8 @@
         "th":    "theme",
         "hist":  "history",
         "cal":  "calendar",
-        "wgt":  "widgets"
+        "wgt":  "widgets",
+        "mon": "monitor"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

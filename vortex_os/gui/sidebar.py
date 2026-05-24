@@ -38,6 +38,7 @@ class SidebarDock(QWidget):
         self.setStyleSheet(SIDEBAR)
         self._active_action = None
         self._buttons = {}
+        self._indicators    = {}
         self._build_ui()
 
     def _build_ui(self):
@@ -76,19 +77,57 @@ class SidebarDock(QWidget):
         self.setLayout(layout)
 
     def _make_button(self, icon, action, tooltip):
-        """Creates a styled dock button."""
-        btn = QPushButton(icon)
-        btn.setFixedSize(self.WIDTH - 4, self.WIDTH - 4)
-        btn.setStyleSheet(DOCK_BUTTON)
-        btn.setToolTip(tooltip)
-        btn.setFont(QFont("monospace", 18))
+     """
+     Creates a dock button with a running indicator dot below it.
+     The container holds both the button and the dot.
+     """
+     # Container for button + indicator dot
+     container = QWidget()
+     container.setFixedSize(self.WIDTH - 4, self.WIDTH)
+     container.setStyleSheet("background: transparent;")
 
-        # Capture action in lambda default arg (Python closure fix)
-        btn.clicked.connect(lambda checked, a=action: self._on_click(a))
+     c_layout = QVBoxLayout()
+     c_layout.setContentsMargins(0, 0, 0, 0)
+     c_layout.setSpacing(1)
 
-        self._buttons[action] = btn
-        return btn
+     btn = QPushButton(icon)
+     btn.setFixedSize(self.WIDTH - 4, self.WIDTH - 10)
+     btn.setStyleSheet(DOCK_BUTTON)
+     btn.setToolTip(tooltip)
+     btn.setFont(QFont("monospace", 18))
+     btn.clicked.connect(lambda checked, a=action: self._on_click(a))
 
+    # Running indicator dot (hidden by default)
+     dot = QLabel("●")
+     dot.setAlignment(Qt.AlignmentFlag.AlignCenter)
+     dot.setFixedHeight(8)
+     dot.setStyleSheet("color: transparent; font-size: 7px;")
+
+     c_layout.addWidget(btn)
+     c_layout.addWidget(dot)
+     container.setLayout(c_layout)
+
+     self._buttons[action]    = btn
+     self._indicators[action] = dot
+
+     return container
+
+    def update_indicator(self, action, active):
+     """
+     Sows or hides the running dot under a dock button.
+
+    Args:
+        action : button action string (e.g. "terminal")
+        active : True = show glowing dot, False = hide
+    """
+     dot = self._indicators.get(action)
+     if dot is None:
+        return
+
+     if active:
+        dot.setStyleSheet("color: #00ffff; font-size: 7px;")
+     else:
+        dot.setStyleSheet("color: transparent; font-size: 7px;")
     def _make_separator(self):
         """Thin horizontal line between button groups."""
         line = QFrame()

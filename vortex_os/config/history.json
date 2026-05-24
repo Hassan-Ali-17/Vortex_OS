@@ -67,6 +67,14 @@
     "q",
     "h",
     "clock gui",
+    "q",
+    "help",
+    "theme",
+    "theme animate",
+    "h",
+    "desktop",
+    "h",
+    "desktop",
     "q"
   ],
   "max_entries": 500

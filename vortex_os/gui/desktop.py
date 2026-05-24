@@ -1,6 +1,7 @@
 # gui/desktop.py
 # VORTEX OS - Main Desktop Environment Window
-
+from gui.context_menu  import build_context_menu
+from themes.theme_engine import THEMES
 import os
 import math
 
@@ -71,6 +72,49 @@ class DesktopCanvas(QWidget):
         layout.addStretch(3)
 
         self.setLayout(layout)
+
+    def contextMenuEvent(self, event):
+     """
+     Called by Qt when the user right-clicks on the canvas.
+     We build the menu with callbacks into the desktop, then show it.
+     """
+     # Walk up to find the VortexDesktop parent
+     desktop = self._find_desktop()
+     if desktop is None:
+        return
+
+     from themes.theme_engine import THEMES, get_engine
+
+    # Build theme switcher entries
+     engine     = get_engine()
+     theme_list = []
+     for name in THEMES:
+        # Capture name in lambda default arg
+        def make_cb(n=name):
+            return lambda: desktop._switch_theme(n)
+        theme_list.append((name, make_cb()))
+
+     callbacks = {
+        "terminal":    lambda: desktop._handle_action("terminal"),
+        "clock":       lambda: desktop._handle_action("clock"),
+        "calendar":    lambda: desktop._handle_action("calendar"),
+        "monitor":     lambda: desktop._handle_action("monitor"),
+        "fullscreen":  desktop._toggle_fullscreen,
+        "hide_desktop":desktop.hide,
+        "theme_list":  theme_list,
+     }
+
+     menu = build_context_menu(self, callbacks)
+     menu.exec(event.globalPos())
+
+    def _find_desktop(self):
+     """Walks up the parent chain to find VortexDesktop."""
+     p = self.parent()
+     while p is not None:
+        if isinstance(p, VortexDesktop):
+            return p
+        p = p.parent() if hasattr(p, 'parent') else None
+     return None    
 
     def _tick_animation(self):
         """Advances the animation state and triggers a repaint."""
@@ -153,7 +197,15 @@ class VortexDesktop(QMainWindow):
     - Widget launching via AppManager
     - Keyboard shortcuts
     - Open app tracking for taskbar
-    """
+      """
+
+    def _show_status(self, title, message):
+     """
+    Lightweight status output — prints to console instead of
+    using the notification system.
+    Keeps the code working without any GUI toast dependency.
+     """
+     print(f"\n  ◈ {title}  —  {message}\n")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -289,12 +341,15 @@ class VortexDesktop(QMainWindow):
             if manager:
                 manager.request_widget("clock")
             self._add_open_app("CLOCK")
+            self.sidebar.update_indicator("clock", True)   
 
         elif action == "calendar":
             manager = get_app_manager()
             if manager:
                 manager.request_widget("calendar")
             self._add_open_app("CALENDAR")
+            self.sidebar.update_indicator("calendar", True)        # ← ADD
+
 
         elif action == "scan":
             self._toggle_terminal()
@@ -311,25 +366,44 @@ class VortexDesktop(QMainWindow):
             # Hide all floating elements, show clean desktop
             self.terminal.hide()
             self._remove_open_app("TERMINAL")
+        elif action == "monitor":
+          manager = get_app_manager()
+          if manager:
+           manager.request_widget("monitor")
+        self._add_open_app("MONITOR")  
+        self.sidebar.update_indicator("scan", True)            # ← ADD 
 
     def _toggle_terminal(self):
-        """Shows or hides the embedded terminal."""
-        if self.terminal.isVisible():
-            self.terminal.hide()
-            self._remove_open_app("TERMINAL")
-            self.sidebar.set_active(None)
-        else:
-            self._position_terminal()
-            self.terminal.show()
-            self.terminal.raise_()
-            self.terminal.input_line.setFocus()
-            self._add_open_app("TERMINAL")
-            self.sidebar.set_active("terminal")
+     if self.terminal.isVisible():
+        self.terminal.hide()
+        self._remove_open_app("TERMINAL")
+        self.sidebar.set_active(None)
+        self.sidebar.update_indicator("terminal", False)   # ← ADD
+     else:
+        self._position_terminal()
+        self.terminal.show()
+        self.terminal.raise_()
+        self.terminal.input_line.setFocus()
+        self._add_open_app("TERMINAL")
+        self.sidebar.set_active("terminal")
+        self.sidebar.update_indicator("terminal", True)    # ← ADD
+
+    def _switch_theme(self, theme_name):
+     """
+    Switches the active theme and reports to console.
+    No notification widget required.
+    """
+     from themes.theme_engine import get_engine
+     engine = get_engine()
+     engine.set_theme(theme_name)
+     self._show_status("THEME CHANGED", theme_name.upper())        
 
     def _on_terminal_closed(self):
         """Called when the terminal's X button is clicked."""
         self._remove_open_app("TERMINAL")
         self.sidebar.set_active(None)
+        self.sidebar.update_indicator("terminal", False)       # ← ADD
+
 
     def _add_open_app(self, name):
         """Adds an app name to the taskbar open-apps list."""

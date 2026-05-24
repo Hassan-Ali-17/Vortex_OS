@@ -7,7 +7,7 @@ import os
 from terminal.history import HistoryManager
 from commands.theme_commands import cmd_theme, cmd_history
 # Add to imports in terminal/shell.py
-from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop
+from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop , cmd_monitor  
 from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
@@ -94,6 +94,7 @@ class VortexShell:
             "calendar":    (cmd_calendar,   "Launch floating calendar widget"),
             "widgets":     (cmd_widgets,    "List available widgets"),
             "desktop":     (cmd_desktop, "Show the VORTEX desktop window"),
+            "monitor":     (cmd_monitor, "Launch system monitor widget"),
         })
 
         self.config["_router"] = self.router

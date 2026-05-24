@@ -76,9 +76,12 @@ class VortexCore(QObject):
         """Tells AppManager about all available widgets."""
         from widgets.clock_widget    import ClockWidget
         from widgets.calendar_widget import CalendarWidget
+        from widgets.monitor_widget  import MonitorWidget
 
         self.app_manager.register_widget("clock",    ClockWidget)
         self.app_manager.register_widget("calendar", CalendarWidget)
+        self.app_manager.register_widget("monitor",  MonitorWidget)  # ← ADD
+
 
     def _play_startup_sound(self):
         """Optional startup sound via PulseAudio."""

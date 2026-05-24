@@ -67,6 +67,14 @@ def cmd_desktop(args, config):
     else:
         print(f"\n{COLORS.ERROR}  [!] Desktop not available.{COLORS.RESET}\n")
 
+@with_timestamp
+def cmd_monitor(args, config):
+    """
+    Command: monitor
+    Opens the floating system monitor widget.
+    """
+    print(f"\n{COLORS.ACCENT}  ◈ Launching System Monitor...{COLORS.RESET}\n")
+    _request_widget("monitor")
 
 @with_timestamp
 def cmd_widgets(args, config):
