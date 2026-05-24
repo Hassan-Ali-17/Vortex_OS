@@ -241,19 +241,39 @@ class VortexDesktop(QMainWindow):
         self.terminal.closed.connect(self._on_terminal_closed)
 
     def _setup_shortcuts(self):
-        """Registers global keyboard shortcuts."""
-        # Ctrl+T — toggle terminal
-        sc_terminal = QShortcut(QKeySequence("Ctrl+T"), self)
-        sc_terminal.activated.connect(lambda: self._handle_action("terminal"))
+    # Ctrl+T — toggle terminal
+     sc_terminal = QShortcut(QKeySequence("Ctrl+T"), self)
+     sc_terminal.activated.connect(
+        lambda: self._handle_action("terminal")
+     )
 
-        # Escape — if fullscreen, do nothing (need desktop to stay up)
-        # F11 — toggle fullscreen
-        sc_fs = QShortcut(QKeySequence("F11"), self)
-        sc_fs.activated.connect(self._toggle_fullscreen)
+    # F11 — toggle fullscreen
+     sc_fs = QShortcut(QKeySequence("F11"), self)
+     sc_fs.activated.connect(self._toggle_fullscreen)
 
-        # Ctrl+Q — quit desktop (returns to console terminal)
-        sc_quit = QShortcut(QKeySequence("Ctrl+Q"), self)
-        sc_quit.activated.connect(self._quit_desktop)
+    # Ctrl+Q now just HIDES the desktop — does NOT quit anything
+     sc_hide = QShortcut(QKeySequence("Ctrl+Q"), self)
+     sc_hide.activated.connect(self.hide)
+
+    # Ctrl+Shift+Q — full application quit (intentional, explicit)
+     sc_quit = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
+     sc_quit.activated.connect(self._full_quit)
+
+    def _full_quit(self):
+     """
+    Ctrl+Shift+Q — intentional full quit.
+    Confirms before killing everything.
+     """
+     from PyQt6.QtWidgets import QMessageBox
+     reply = QMessageBox.question(
+        self,
+        "Quit VORTEX OS",
+        "Shut down VORTEX OS completely?",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+     )
+     if reply == QMessageBox.StandardButton.Yes:
+        from PyQt6.QtWidgets import QApplication
+        QApplication.quit()
 
     def _handle_action(self, action):
         """
@@ -330,6 +350,19 @@ class VortexDesktop(QMainWindow):
         else:
             self.showFullScreen()
 
+    def closeEvent(self, event):
+     """
+    Override closeEvent so closing the desktop window
+    does NOT kill the Qt application or the terminal thread.
+    It just hides the window. The console terminal keeps running.
+     """
+     event.ignore()        # Block the default close behaviour
+     self.hide()           # Just hide — don't destroy
+     print("\n[VORTEX] Desktop hidden. Type 'desktop' to restore it.\n")
+
     def _quit_desktop(self):
-        """Closes the desktop window (terminal session continues)."""
-        self.close()
+     """
+    Ctrl+Q — hides desktop only. Terminal stays alive.
+    Previously this called self.close() which propagated to app.quit().
+     """
+     self.hide()

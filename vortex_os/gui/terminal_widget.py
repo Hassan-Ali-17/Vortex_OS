@@ -9,7 +9,7 @@ import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QLabel, QPushButton,
-    QSizePolicy
+    QSizePolicy, QSizeGrip
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt6.QtGui  import QTextCursor, QColor, QTextCharFormat, QFont
@@ -86,6 +86,10 @@ class CommandWorker(QObject):
 
 
 class EmbeddedTerminal(QWidget):
+
+    # Add to the class-level signal declarations in EmbeddedTerminal:
+    closed         = pyqtSignal()
+    command_done   = pyqtSignal(str, float)   # ← ADD: (command_text, elapsed_s)
     """
     A full VORTEX terminal running inside the desktop GUI.
 
@@ -226,6 +230,27 @@ class EmbeddedTerminal(QWidget):
 
         self.setLayout(layout)
 
+    # ── Resize grip ────────────────────────────────────────
+    # QSizeGrip is a small triangular handle widget.
+    # We parent it to self so it stays inside the terminal bounds.
+    # We manually position it in the bottom-right corner.
+        self._grip = QSizeGrip(self)
+        self._grip.setFixedSize(16, 16)
+        self._grip.setStyleSheet("""
+         QSizeGrip {
+        background: qlineargradient(
+            x1:0, y1:0, x2:1, y2:1,
+            stop:0 transparent,
+            stop:0.6 transparent,
+            stop:1 #00ffff
+        );
+        border: none;
+    }
+""")
+        self._grip.setCursor(Qt.CursorShape.SizeFDiagCursor)
+     # Position it — resizeEvent will keep it anchored
+        self._reposition_grip()
+
     def _print_banner(self):
         """Prints the welcome message into the output area."""
         banner_lines = [
@@ -295,33 +320,27 @@ class EmbeddedTerminal(QWidget):
         self.output.ensureCursorVisible()
 
     def _on_submit(self):
-        """Called when user presses Enter in the input field."""
-        text = self.input_line.text().strip()
-        if not text:
-            return
+     text = self.input_line.text().strip()
+     if not text:
+        return
 
-        # Show command in output with prompt prefix
-        self._append_colored(f"[VORTEX] > {text}", "#00ffff")
+     self._append_colored(f"[VORTEX] > {text}", "#00ffff")
+     self._history.append(text)
+     self._hist_idx = len(self._history)
+     self.input_line.clear()
+ 
+     self._cmd_start_time = datetime.datetime.now()   # ← ADD: record start time
+     self._last_command   = text                      # ← ADD: remember command
 
-        # Add to history
-        self._history.append(text)
-        self._hist_idx = len(self._history)
+     if text.strip() == "clear":
+        self.output.clear()
+        return
 
-        # Clear input
-        self.input_line.clear()
+     if text.strip() in ("exit", "quit", "q"):
+        self._append_colored("  Session ended.", "#444466")
+        return
 
-        # Handle clear specially (clears the QTextEdit)
-        if text.strip() == "clear":
-            self.output.clear()
-            return
-
-        # Handle exit
-        if text.strip() in ("exit", "quit", "q"):
-            self._append_colored("  Session ended.", "#444466")
-            return
-
-        # Run command in worker thread
-        self._run_command(text)
+     self._run_command(text)
 
     def _run_command(self, text):
         """Runs a command off the main thread to keep GUI responsive."""
@@ -346,6 +365,21 @@ class EmbeddedTerminal(QWidget):
         self.input_line.setEnabled(True)
         self.input_line.setFocus()
         self.lbl_title.setText("▶ VORTEX TERMINAL")
+
+    def resizeEvent(self, event):
+     """Keep the grip in the bottom-right corner when terminal resizes."""
+     super().resizeEvent(event)
+     self._reposition_grip()
+
+    def _reposition_grip(self):
+     """Moves the QSizeGrip to the bottom-right corner."""
+     if hasattr(self, '_grip'):
+         grip_size = self._grip.width()
+         self._grip.move(
+            self.width()  - grip_size,
+            self.height() - grip_size
+         )
+         self._grip.raise_()   # Keep it above other widgets    
 
     def eventFilter(self, obj, event):
         """Intercepts key events on the input line for history navigation."""
@@ -373,6 +407,40 @@ class EmbeddedTerminal(QWidget):
                 return True
 
         return super().eventFilter(obj, event)
+    
+    # ── Drag-to-resize from title bar ──────────────────────────
+
+    def mousePressEvent(self, event):
+     """
+    Clicking the title bar area starts a move drag.
+    This lets the user reposition the terminal on the desktop.
+     """
+     if event.button() == Qt.MouseButton.LeftButton:
+        # Only drag from the top 28px (title bar height)
+         if event.position().y() <= 28:
+             self._move_drag   = True
+             self._move_origin = event.globalPosition().toPoint()
+             self._move_start  = self.pos()
+         else:
+            self._move_drag = False
+     super().mousePressEvent(event)
+
+     def mouseMoveEvent(self, event):
+      """Moves the terminal when dragging from the title bar."""
+     if getattr(self, '_move_drag', False):
+        delta    = event.globalPosition().toPoint() - self._move_origin
+        new_pos  = self._move_start + delta
+        # Keep inside parent bounds
+        parent_w = self.parent().width()  if self.parent() else 9999
+        parent_h = self.parent().height() if self.parent() else 9999
+        new_x    = max(0, min(new_pos.x(), parent_w - self.width()))
+        new_y    = max(0, min(new_pos.y(), parent_h - self.height()))
+        self.move(new_x, new_y)
+     super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+     self._move_drag = False
+     super().mouseReleaseEvent(event)
 
     def _on_close(self):
         """Hides the terminal and emits closed signal."""
