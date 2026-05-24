@@ -42,6 +42,17 @@ class AppManager(QObject):
         # Connect signal to slot — Qt handles thread-safe queuing
         self.widget_requested.connect(self._launch_widget)
 
+    # Add this method to the AppManager class:
+
+    def launch_desktop(self):
+     """
+    Creates and shows the VortexDesktop window.
+    Must be called from the main thread after QApplication exists.
+     """
+     from gui.desktop import VortexDesktop
+     self._desktop = VortexDesktop()
+     self._desktop.show()    
+
     def register_widget(self, name, widget_class):
         """Register a widget class under a name."""
         self._widget_registry[name] = widget_class
@@ -104,3 +115,5 @@ def set_app_manager(manager):
     """Called once by vortex_core.py during boot."""
     global _app_manager
     _app_manager = manager
+
+

@@ -100,19 +100,15 @@ class VortexCore(QObject):
                     return
 
     def boot(self):
-        """
-        Boot sequence:
-        1. Play sound
-        2. Start terminal thread
-        3. Hand control to Qt event loop (blocks here until exit)
-        """
-        self._play_startup_sound()
+     self._play_startup_sound()
+     self.terminal_thread.start()
 
-        # Start the terminal in its thread
-        self.terminal_thread.start()
+    # Launch the desktop window on the main thread
+    # Small delay ensures Qt event loop is ready
+     from PyQt6.QtCore import QTimer
+     QTimer.singleShot(200, self.app_manager.launch_desktop)
 
-        # Run Qt event loop on main thread — blocks until app.quit()
-        return self.app_manager.run()
+     return self.app_manager.run()
 
 
 def launch():

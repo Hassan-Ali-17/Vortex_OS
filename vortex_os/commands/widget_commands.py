@@ -50,6 +50,22 @@ def cmd_calendar(args, config):
     print(f"  {COLORS.DIM}Floating window will appear on your desktop.{COLORS.RESET}")
     print(f"  {COLORS.DIM}Press ESC on the widget to close it.{COLORS.RESET}\n")
     _request_widget("calendar")
+    
+
+@with_timestamp
+def cmd_desktop(args, config):
+    """
+    Command: desktop
+    Opens or raises the VORTEX desktop window.
+    """
+    from core.app_manager import get_app_manager
+    manager = get_app_manager()
+    if manager and hasattr(manager, '_desktop'):
+        manager._desktop.show()
+        manager._desktop.raise_()
+        print(f"\n{COLORS.SUCCESS}  ◈ Desktop raised.{COLORS.RESET}\n")
+    else:
+        print(f"\n{COLORS.ERROR}  [!] Desktop not available.{COLORS.RESET}\n")
 
 
 @with_timestamp

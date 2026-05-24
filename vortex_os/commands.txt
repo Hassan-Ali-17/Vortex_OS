@@ -37,3 +37,17 @@ hist                   ← alias for history
 theme animate          ← shows all themes 1 by 1 
 history <word>         ← shows the word in history array 
    
+//---------------------------Phase 4+5 commands--------------------------------\\
+
+
+Keyboard shortcuts:
+Ctrl+T      ← toggle embedded terminal
+F11         ← toggle fullscreen / windowed
+Ctrl+Q      ← close desktop (console terminal stays alive)
+ESC         ← close clock/calendar floating widgets
+Click interactions:
+▶ (sidebar)  ← open terminal
+◉ (sidebar)  ← open clock widget
+◈ (sidebar)  ← open calendar widget
+⚡ (sidebar)  ← open terminal pre-filled with 'scan'
+◐ (sidebar)  ← open terminal pre-filled with 'theme '   

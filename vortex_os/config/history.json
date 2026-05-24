@@ -54,6 +54,9 @@
     "calendar",
     "q",
     "calendar",
+    "q",
+    "clock gui",
+    "calendar",
     "q"
   ],
   "max_entries": 500
