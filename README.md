@@ -11,6 +11,9 @@
   ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
 ```
 
+</div>
+
+<div align="center">
 **VORTEX OS** · `v0.1.0` · Codename **GENESIS**
 
 *A custom Linux-based pseudo operating system built on Ubuntu.*
