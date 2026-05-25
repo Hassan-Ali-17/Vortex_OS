@@ -64,3 +64,24 @@ Ctrl+T                 ← terminal opens, indicator dot glows on dock
 Ctrl+T again           ← terminal hides, dot disappears
 Ctrl+Q                 ← desktop hides, console terminal lives on
 desktop                ← console command brings desktop back
+
+//---------------------------Phase 7 commands--------------------------------\\
+
+
+vx                        ← show full location map
+vx home                   ← navigate to home directory
+vx core                   ← navigate back to project root
+vx config                 ← go to config folder
+vx where                  ← show current vx:// location
+vx resolve vault          ← show real path of vx://vault
+vault list vx://config    ← list config dir using vx path
+vault go vx://home        ← navigate with vault using vx path
+vault find json vx://core ← search inside vx://core
+landmark                  ← list landmarks (empty at first)
+landmark save myspot      ← save current dir as vx://myspot
+landmark save docs ~/Documents  ← save a specific path
+vx myspot                 ← navigate to your new landmark
+landmark remove myspot    ← delete the landmark
+where                     ← alias for vx where
+goto config               ← alias for vx config
+lm save here              ← alias: landmark save here
