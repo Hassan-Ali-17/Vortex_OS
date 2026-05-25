@@ -8,6 +8,7 @@ from terminal.history import HistoryManager
 from commands.theme_commands import cmd_theme, cmd_history
 # Add to imports in terminal/shell.py
 from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop , cmd_monitor  
+from commands.fs_commands import cmd_vx, cmd_landmark, cmd_vault_vx
 from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
@@ -95,6 +96,8 @@ class VortexShell:
             "widgets":     (cmd_widgets,    "List available widgets"),
             "desktop":     (cmd_desktop, "Show the VORTEX desktop window"),
             "monitor":     (cmd_monitor, "Launch system monitor widget"),
+            "vx":          (cmd_vx,       "VORTEX virtual navigator"),
+            "landmark":    (cmd_landmark, "Manage filesystem landmarks"),
         })
 
         self.config["_router"] = self.router
@@ -128,37 +131,43 @@ class VortexShell:
         print()
 
     def run(self):
-        """Main shell loop — now much simpler than Phase 1."""
-        self._print_banner()
+     """Main shell loop."""
+     self._print_banner()
 
-        while True:
+     while True:
+        try:
+            # ── Build VX-aware prompt ──────────────
+            real_cwd = os.getcwd()
+
+            # Try to get vx:// display path
             try:
-                # Dynamic prompt with current directory
-                cwd  = os.getcwd()
-                home = os.path.expanduser("~")
-                if cwd.startswith(home):
-                    cwd = "~" + cwd[len(home):]
-                prompt = f"[VORTEX@CORE {cwd}] > "
+                from core.filesystem import get_vfs
+                vfs      = get_vfs()
+                cwd_disp = vfs.display_path(real_cwd)
+            except Exception:
+                # Fallback: compress home with ~
+                home     = os.path.expanduser("~")
+                cwd_disp = ("~" + real_cwd[len(home):]
+                            if real_cwd.startswith(home)
+                            else real_cwd)
 
-                raw = input(f"{COLORS.PRIMARY}{prompt}{COLORS.RESET}")
-                
-                if raw.strip():
-                  self.history.add(raw.strip())     # ← ADD THIS LINE
+            prompt = f"[VORTEX@CORE {cwd_disp}] > "
 
-            except KeyboardInterrupt:
-                print(f"\n{COLORS.WARNING}  [!] Use 'exit' to quit.{COLORS.RESET}")
-                continue
-            except EOFError:
-                break
+            raw = input(f"{COLORS.PRIMARY}{prompt}{COLORS.RESET}")
 
-            # Parse input (handles aliases, quoting, etc.)
-            parsed = self.parser.parse(raw)
+        except KeyboardInterrupt:
+            print(f"\n{COLORS.WARNING}  [!] Use 'exit' to quit.{COLORS.RESET}")
+            continue
+        except EOFError:
+            break
 
-            if parsed is None:
-                continue
+        if raw.strip():
+            self.history.add(raw.strip())
 
-            # Route and execute
-            result = self.router.execute(parsed, self.config)
+        parsed = self.parser.parse(raw)
+        if parsed is None:
+            continue
 
-            if result == "EXIT":
-                break
+        result = self.router.execute(parsed, self.config)
+        if result == "EXIT":
+            break

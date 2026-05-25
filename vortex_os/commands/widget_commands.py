@@ -56,16 +56,27 @@ def cmd_calendar(args, config):
 def cmd_desktop(args, config):
     """
     Command: desktop
-    Opens or raises the VORTEX desktop window.
+    Shows and raises the VORTEX desktop window.
+
+    Uses the signal-based request so it is safe to call
+    from the terminal thread (QThread).
+    Never calls .show() directly — that would be a
+    cross-thread Qt violation and causes freezes.
     """
     from core.app_manager import get_app_manager
     manager = get_app_manager()
-    if manager and hasattr(manager, '_desktop'):
-        manager._desktop.show()
-        manager._desktop.raise_()
-        print(f"\n{COLORS.SUCCESS}  ◈ Desktop raised.{COLORS.RESET}\n")
-    else:
-        print(f"\n{COLORS.ERROR}  [!] Desktop not available.{COLORS.RESET}\n")
+
+    if manager is None:
+        print(f"\n{COLORS.ERROR}  [!] App manager not available."
+              f"{COLORS.RESET}\n")
+        return
+
+    # Emit signal — main thread handles the actual .show() call
+    manager.request_show_desktop()
+
+    print(f"\n{COLORS.SUCCESS}  ◈ Desktop requested.{COLORS.RESET}")
+    print(f"  {COLORS.DIM}If it doesn't appear, press F11 or "
+          f"check your display.{COLORS.RESET}\n")
 
 @with_timestamp
 def cmd_monitor(args, config):

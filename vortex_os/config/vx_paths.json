@@ -1,0 +1,19 @@
+{
+    "description": "VORTEX OS Virtual Filesystem Map",
+    "version": "1.0",
+    "prefix": "vx://",
+    "locations": {
+        "core":    "~/vortex_os",
+        "home":    "~",
+        "vault":   "~/vortex_os/vault_storage",
+        "config":  "~/vortex_os/config",
+        "grid":    "~/vortex_os/assets",
+        "logs":    "~/vortex_os/logs",
+        "apps":    "~/vortex_os/apps",
+        "widgets": "~/vortex_os/widgets",
+        "gui":     "~/vortex_os/gui",
+        "tmp":     "/tmp",
+        "root":    "/"
+    },
+    "landmarks": {}
+}
