@@ -88,6 +88,40 @@ def cmd_monitor(args, config):
     _request_widget("monitor")
 
 @with_timestamp
+def cmd_newtab(args, config):
+    """
+    Command: newtab
+    Opens a new tab in the VORTEX desktop terminal.
+    The desktop terminal must be visible for this to work.
+    """
+    from core.app_manager import get_app_manager
+    manager = get_app_manager()
+
+    if manager is None or manager._desktop is None:
+        print(f"\n{COLORS.ERROR}  [!] Desktop not available."
+              f"{COLORS.RESET}\n")
+        return
+
+    # Use signal to be thread-safe
+    # We reuse desktop_show_requested to show the desktop first,
+    # then add a tab via a queued call
+    from PyQt6.QtCore import QTimer
+
+    def _do_newtab():
+        desktop = manager._desktop
+        if not desktop.isVisible():
+            desktop.show()
+        desktop.terminal.show()
+        desktop.terminal.add_tab()
+        desktop.terminal.raise_()
+
+    # Schedule on main thread
+    manager.desktop_show_requested.emit()
+    QTimer.singleShot(300, _do_newtab)
+
+    print(f"\n{COLORS.SUCCESS}  ◈ New tab requested.{COLORS.RESET}\n")    
+
+@with_timestamp
 def cmd_widgets(args, config):
     """
     Command: widgets

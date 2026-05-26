@@ -16,9 +16,10 @@
         "cal":  "calendar",
         "wgt":  "widgets",
         "mon": "monitor",
-        "where":    "vx where",
-        "lm":       "landmark",
-        "goto":     "vx"
+        "where": "vx where",
+        "lm":    "landmark",
+        "goto":  "vx" ,
+        "nt": "newtab"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

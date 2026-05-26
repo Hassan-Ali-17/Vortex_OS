@@ -7,7 +7,7 @@ import os
 from terminal.history import HistoryManager
 from commands.theme_commands import cmd_theme, cmd_history
 # Add to imports in terminal/shell.py
-from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop , cmd_monitor  
+from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop , cmd_monitor , cmd_newtab 
 from commands.fs_commands import cmd_vx, cmd_landmark, cmd_vault_vx
 from themes.colors import COLORS
 from terminal.parser import CommandParser
@@ -98,6 +98,7 @@ class VortexShell:
             "monitor":     (cmd_monitor, "Launch system monitor widget"),
             "vx":          (cmd_vx,       "VORTEX virtual navigator"),
             "landmark":    (cmd_landmark, "Manage filesystem landmarks"),
+            "newtab":      (cmd_newtab, "Open new tab in desktop terminal"),
         })
 
         self.config["_router"] = self.router

@@ -85,3 +85,19 @@ landmark remove myspot    ← delete the landmark
 where                     ← alias for vx where
 goto config               ← alias for vx config
 lm save here              ← alias: landmark save here
+
+//---------------------------Phase 8 commands--------------------------------\\
+
+
+Ctrl+T                  ← open terminal panel (first tab)
+Ctrl+T again            ← open a second tab
+Ctrl+T again            ← third tab
+Ctrl+W                  ← close current tab
+Ctrl+Tab                ← cycle to next tab
+Ctrl+Shift+Tab          ← cycle to previous tab
+Double-click tab label  ← rename the tab
+Click + button          ← new tab
+Click × on a tab        ← close that tab
+vault go vx://config    ← tab title updates to vx://config
+vault go vx://home      ← tab title updates to vx://home
+newtab                  ← console command opens new desktop tab

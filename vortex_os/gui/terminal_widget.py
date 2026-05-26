@@ -104,6 +104,7 @@ class EmbeddedTerminal(QWidget):
 
     # Emitted when the user closes this terminal window
     closed = pyqtSignal()
+    command_finished = pyqtSignal(str, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -328,6 +329,9 @@ class EmbeddedTerminal(QWidget):
      self._history.append(text)
      self._hist_idx = len(self._history)
      self.input_line.clear()
+
+     self._cmd_start_time = datetime.datetime.now()    # ← ADD
+     self._last_command   = text 
  
      self._cmd_start_time = datetime.datetime.now()   # ← ADD: record start time
      self._last_command   = text                      # ← ADD: remember command
@@ -361,11 +365,21 @@ class EmbeddedTerminal(QWidget):
         self._worker_thread.start()
 
     def _on_command_done(self):
-        """Called when command finishes — re-enable input."""
-        self.input_line.setEnabled(True)
-        self.input_line.setFocus()
-        self.lbl_title.setText("▶ VORTEX TERMINAL")
+     """
+    Called when the worker thread finishes.
+    Re-enables input and emits command_finished with timing data.
+     """
+     self.input_line.setEnabled(True)
+     self.input_line.setFocus()
+     self.lbl_title.setText("▶ VORTEX TERMINAL")
 
+    # Emit timing signal if we have the data
+     if hasattr(self, '_cmd_start_time') and hasattr(self, '_last_command'):
+        elapsed = (
+            datetime.datetime.now() - self._cmd_start_time
+        ).total_seconds()
+        self.command_finished.emit(self._last_command, elapsed)
+        
     def resizeEvent(self, event):
      """Keep the grip in the bottom-right corner when terminal resizes."""
      super().resizeEvent(event)
