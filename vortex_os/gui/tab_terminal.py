@@ -138,25 +138,49 @@ class TabTerminal(QWidget):
         self.setLayout(layout)
 
     def _setup_shortcuts(self):
-        """
-        Keyboard shortcuts — only active when this widget has focus.
+     """
+    Keyboard shortcuts — only active when this widget has focus.
 
-        Ctrl+T   → new tab
-        Ctrl+W   → close current tab
-        Ctrl+Tab → next tab
-        Ctrl+Shift+Tab → previous tab
-        """
-        sc_new = QShortcut(QKeySequence("Ctrl+T"), self)
-        sc_new.activated.connect(self.add_tab)
+    Ctrl+T          → new tab
+    Ctrl+W          → close current tab
+    Ctrl+Tab        → next tab
+    Ctrl+Shift+Tab  → previous tab
+    Ctrl+1 to Ctrl+5 → jump directly to tab 1–5
+     """
+     sc_new = QShortcut(QKeySequence("Ctrl+T"), self)
+     sc_new.activated.connect(self.add_tab)
 
-        sc_close = QShortcut(QKeySequence("Ctrl+W"), self)
-        sc_close.activated.connect(self._close_current_tab)
+     sc_close = QShortcut(QKeySequence("Ctrl+W"), self)
+     sc_close.activated.connect(self._close_current_tab)
+ 
+     sc_next = QShortcut(QKeySequence("Ctrl+Tab"), self)
+     sc_next.activated.connect(self._next_tab)
 
-        sc_next = QShortcut(QKeySequence("Ctrl+Tab"), self)
-        sc_next.activated.connect(self._next_tab)
+     sc_prev = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+     sc_prev.activated.connect(self._prev_tab)
 
-        sc_prev = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
-        sc_prev.activated.connect(self._prev_tab)
+    # ── Ctrl+1 through Ctrl+5 ─────────────────────────────
+    # Jump directly to a tab by number.
+    #
+    # Why loop with lambda i=i?
+    # Python closures capture variables by reference, not value.
+    # Without the default argument trick (i=i), every lambda
+    # would capture the SAME variable i — and after the loop
+    # finishes, i=4 for all of them. Every shortcut would
+    # jump to tab 5.
+    #
+    # With i=i, each lambda gets its OWN copy of i frozen
+    # at the moment it was created. So:
+    #   i=0 → Ctrl+1 jumps to tab index 0 (tab 1)
+    #   i=1 → Ctrl+2 jumps to tab index 1 (tab 2)
+    #   ... and so on.
+    #
+    # Tab numbers are 1-based for the user (Ctrl+1 = first tab)
+    # but 0-based internally (_switch_to uses 0-based index).
+
+     for i in range(5):
+        sc = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
+        sc.activated.connect(lambda checked=False, idx=i: self._switch_to(idx))
 
     # ─────────────────────────────────────────────
     #  TAB MANAGEMENT
