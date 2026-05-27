@@ -15,54 +15,90 @@ class AppManager(QObject):
     Never call Qt widget methods directly from another thread.
 
     Signals:
-        widget_requested(str)  : open a named widget
-        desktop_show_requested : show/raise the desktop window
+        widget_requested(str)   : open a named floating widget
+        desktop_show_requested  : show/raise the desktop window
+        app_launch_requested(str): launch an app by id
     """
 
     widget_requested       = pyqtSignal(str)
-    desktop_show_requested = pyqtSignal()      # ← NEW
+    desktop_show_requested = pyqtSignal()
+    app_launch_requested   = pyqtSignal(str)
 
     def __init__(self):
+        # ── Step 1: QApplication must exist first ──────────────
+        # QApplication must be created before ANY QObject,
+        # including ourselves. super().__init__() creates a QObject
+        # which requires QApplication to already exist.
         self.app = QApplication.instance() or QApplication(sys.argv)
 
         # Do NOT quit when last window closes.
         # The terminal thread owns the quit lifecycle.
         self.app.setQuitOnLastWindowClosed(False)
 
+        # ── Step 2: Now safe to call QObject __init__ ──────────
+        # Only AFTER QApplication exists can we call super().__init__()
+        # Without this, any signal/slot operation raises RuntimeError.
         super().__init__()
 
+        # ── Step 3: Internal state ─────────────────────────────
         self._widget_registry = {}
         self._open_widgets    = {}
-        self._desktop         = None   # Set by launch_desktop()
+        self._desktop         = None
 
-        # Connect signals to slots — Qt handles thread-safe queuing
+        # ── Step 4: Connect signals to slots ───────────────────
+        # Connections can only happen after super().__init__() above.
+        # Qt requires the object to be fully initialised first.
         self.widget_requested.connect(self._launch_widget)
-        self.desktop_show_requested.connect(self._show_desktop)  # ← NEW
+        self.desktop_show_requested.connect(self._show_desktop)
+        self.app_launch_requested.connect(self._launch_app)
+
+    # ─────────────────────────────────────────────
+    #  PUBLIC API — safe to call from any thread
+    # ─────────────────────────────────────────────
 
     def register_widget(self, name, widget_class):
-        """Register a widget class under a name."""
+        """Register a floating widget class under a name."""
         self._widget_registry[name] = widget_class
 
     def request_widget(self, name):
         """
-        Safe to call from ANY thread.
-        Emitting a signal is the only thread-safe way to
-        trigger GUI work from a non-main thread.
+        Thread-safe widget open request.
+        Emitting a signal is the only safe cross-thread Qt operation.
         """
         self.widget_requested.emit(name)
 
     def request_show_desktop(self):
+        """Thread-safe desktop show request."""
+        self.desktop_show_requested.emit()
+
+    def launch_desktop(self):
         """
-        Safe to call from ANY thread.
-        Asks the main thread to show and raise the desktop.
+        Creates and shows the VortexDesktop window.
+        Must be called from the main thread after QApplication exists.
         """
-        self.desktop_show_requested.emit()              # ← NEW
+        from gui.desktop import VortexDesktop
+        self._desktop = VortexDesktop()
+        self._desktop.show()
+
+    def run(self):
+        """Starts the Qt event loop. Blocks until app.quit()."""
+        return self.app.exec()
+
+    def quit(self):
+        """Safely quits the Qt application."""
+        self.app.quit()
+
+    # ─────────────────────────────────────────────
+    #  SLOTS — always run on main thread
+    #  Qt routes cross-thread signals here safely.
+    # ─────────────────────────────────────────────
 
     def _launch_widget(self, name):
-        """Slot — always runs on main thread."""
+        """Opens a named floating widget."""
         if name not in self._widget_registry:
             return
 
+        # If already open and visible, just raise it
         if name in self._open_widgets:
             w = self._open_widgets[name]
             if w.isVisible():
@@ -79,38 +115,27 @@ class AppManager(QObject):
             print(f"\n  [GUI ERROR] Failed to launch '{name}': {e}\n")
 
     def _show_desktop(self):
-        """
-        Slot — always runs on main thread.
-        Shows, raises, and activates the desktop window.
-        """
+        """Shows and raises the desktop window."""
         if self._desktop is None:
             print("\n  [!] Desktop not initialized yet.\n")
             return
 
-        # Show if hidden
         if not self._desktop.isVisible():
             self._desktop.show()
 
-        # Bring to front
         self._desktop.raise_()
         self._desktop.activateWindow()
 
-    def launch_desktop(self):
+    def _launch_app(self, app_id):
         """
-        Creates and shows the VortexDesktop window.
-        Called once from the main thread after QApplication exists.
+        Launches a VORTEX app by id via the AppRegistry.
+        Runs on main thread — safe to create Qt widgets here.
         """
-        from gui.desktop import VortexDesktop
-        self._desktop = VortexDesktop()
-        self._desktop.show()
-
-    def run(self):
-        """Starts the Qt event loop. Blocks until app.quit()."""
-        return self.app.exec()
-
-    def quit(self):
-        """Safely quits the Qt application."""
-        self.app.quit()
+        from apps.registry import get_registry
+        registry        = get_registry()
+        success, result = registry.launch(app_id)
+        if not success:
+            print(f"\n  [APP ERROR] {result}\n")
 
 
 # ── Global singleton ──────────────────────────────────────

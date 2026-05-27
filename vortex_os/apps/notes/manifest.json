@@ -1,0 +1,10 @@
+{
+    "id":          "notes",
+    "name":        "VORTEX Notes",
+    "version":     "1.0.0",
+    "description": "Persistent sticky notes saved to vault",
+    "entry":       "apps/notes/main.py",
+    "icon":        "◧",
+    "category":    "productivity",
+    "author":      "VORTEX TEAM"
+}

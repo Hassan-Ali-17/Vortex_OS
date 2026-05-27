@@ -79,6 +79,7 @@ class DesktopCanvas(QWidget):
 
         self.setLayout(layout)
         # ← NO terminal creation here. Ever.
+        
 
     def _tick_animation(self):
         self._tick   += 1
@@ -235,8 +236,22 @@ class VortexDesktop(QMainWindow):
         self.terminal = TabTerminal(central)
         self.terminal.hide()
 
+        from gui.app_launcher import AppLauncherPanel
+        self.launcher = AppLauncherPanel(central)
+        self.launcher.hide()
+        self.launcher.app_launch_requested.connect(self._launch_app)
+
         # Position after layout is ready
         QTimer.singleShot(100, self._position_terminal)
+
+
+    def _launch_app(self, app_id):
+     """Requests app launch via AppManager signal (thread-safe)."""
+     from core.app_manager import get_app_manager
+     manager = get_app_manager()
+     if manager:
+        manager.app_launch_requested.emit(app_id)
+    
 
     def _position_terminal(self):
         """
@@ -334,6 +349,7 @@ class VortexDesktop(QMainWindow):
             self._prefill_active_tab("theme ")
 
         elif action == "desktop":
+            self.launcher.toggle()
             self.terminal.hide()
             self._remove_open_app("TERMINAL")
 

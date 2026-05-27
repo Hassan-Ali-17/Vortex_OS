@@ -19,7 +19,8 @@
         "where": "vx where",
         "lm":    "landmark",
         "goto":  "vx" ,
-        "nt": "newtab"
+        "nt": "newtab",
+        "launch": "app launch"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

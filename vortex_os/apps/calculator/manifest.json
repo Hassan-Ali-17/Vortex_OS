@@ -1,0 +1,10 @@
+{
+    "id":          "calculator",
+    "name":        "VORTEX Calc",
+    "version":     "1.0.0",
+    "description": "Cyberpunk calculator with keyboard support",
+    "entry":       "apps/calculator/main.py",
+    "icon":        "⊕",
+    "category":    "tools",
+    "author":      "VORTEX TEAM"
+}

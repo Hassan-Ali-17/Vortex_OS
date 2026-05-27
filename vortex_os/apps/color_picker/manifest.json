@@ -1,0 +1,10 @@
+{
+    "id":          "color_picker",
+    "name":        "VORTEX Colors",
+    "version":     "1.0.0",
+    "description": "Color picker utility for theme editing",
+    "entry":       "apps/color_picker/main.py",
+    "icon":        "◉",
+    "category":    "utilities",
+    "author":      "VORTEX TEAM"
+}

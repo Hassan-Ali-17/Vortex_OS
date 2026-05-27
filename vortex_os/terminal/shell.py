@@ -12,6 +12,8 @@ from commands.fs_commands import cmd_vx, cmd_landmark, cmd_vault_vx
 from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
+from commands.app_commands import cmd_app
+
 
 # Phase 1 commands
 from commands.builtin_commands import (
@@ -99,6 +101,7 @@ class VortexShell:
             "vx":          (cmd_vx,       "VORTEX virtual navigator"),
             "landmark":    (cmd_landmark, "Manage filesystem landmarks"),
             "newtab":      (cmd_newtab, "Open new tab in desktop terminal"),
+            "app":         (cmd_app, "App system — list, launch, install"),
         })
 
         self.config["_router"] = self.router
