@@ -104,12 +104,28 @@ def _app_list():
 
 
 def _app_launch(app_id):
-    print(f"\n{COLORS.ACCENT}  ◈ Launching: {app_id}{COLORS.RESET}")
+    """Requests app launch on main thread via signal."""
+    from apps.registry import get_registry
+    registry = get_registry()
+
+    # Validate the app exists before emitting signal
+    manifest = registry.get(app_id)
+    if manifest is None:
+        print(f"\n{COLORS.ERROR}  [!] App not found: '{app_id}'"
+              f"{COLORS.RESET}")
+        print(f"  {COLORS.DIM}Type 'app list' to see "
+              f"available apps.{COLORS.RESET}\n")
+        return
+
+    print(f"\n{COLORS.ACCENT}  ◈ Launching: "
+          f"{manifest.get('name', app_id)}{COLORS.RESET}")
+    print(f"  {COLORS.DIM}{manifest.get('description', '')}"
+          f"{COLORS.RESET}\n")
+
     success = _launch_on_main_thread(app_id)
-    if success:
-        print(f"  {COLORS.SUCCESS}✓ Launch requested.{COLORS.RESET}\n")
-    else:
-        print(f"  {COLORS.ERROR}[!] App manager unavailable.{COLORS.RESET}\n")
+    if not success:
+        print(f"  {COLORS.ERROR}[!] App manager not available."
+              f"{COLORS.RESET}\n")
 
 
 def _app_info(app_id):

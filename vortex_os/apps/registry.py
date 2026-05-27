@@ -101,57 +101,73 @@ class AppRegistry:
         return inst is not None and inst.isVisible()
 
     def launch(self, app_id):
-        """
-        Launches an app by id.
+     """
+    Launches an app by id.
+    If already running: brings window to front.
+    If not: creates instance and shows it.
+    """
+     manifest = self._manifests.get(app_id)
+     if manifest is None:
+        return False, f"App '{app_id}' not found."
 
-        If already running: brings its window to front.
-        If not running: imports main.py, creates instance, shows it.
+     # Already open? Just raise it.
+     if self.is_running(app_id):
+        inst = self._instances[app_id]
+        inst.show()
+        inst.raise_()
+        inst.activateWindow()
+        return True, inst
 
-        Returns:
-            (True,  instance) on success
-            (False, reason)   on failure
-        """
-        manifest = self._manifests.get(app_id)
-        if manifest is None:
-            return False, f"App '{app_id}' not found."
+     app_path = os.path.join(manifest["_path"], "main.py")
 
-        # Already open? Just raise the window.
-        if self.is_running(app_id):
-            inst = self._instances[app_id]
-            inst.show()
-            inst.raise_()
-            inst.activateWindow()
-            return True, inst
+     try:
+        spec   = importlib.util.spec_from_file_location(
+                     f"vortex_app_{app_id}", app_path
+                 )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
 
-        # Load the app module from its main.py
-        app_path = os.path.join(manifest["_path"], "main.py")
+        if not hasattr(module, 'create_app'):
+            return False, (f"main.py in '{app_id}' missing "
+                           f"create_app() function.")
 
+        instance = module.create_app(manifest)
+        instance.app_closed.connect(
+            lambda aid=app_id: self._on_app_closed(aid)
+        )
+
+        # ── Position the app centered on the desktop ──────────
+        # Try to get the desktop window from AppManager
         try:
-            spec   = importlib.util.spec_from_file_location(
-                         f"vortex_app_{app_id}", app_path
-                     )
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+            from core.app_manager import get_app_manager
+            manager = get_app_manager()
 
-            # Every app's main.py must define a create_app(manifest) function
-            if not hasattr(module, 'create_app'):
-                return False, (f"main.py in '{app_id}' missing "
-                               f"create_app() function.")
+            if manager and manager._desktop:
+                desktop = manager._desktop
+                dg      = desktop.geometry()
 
-            instance = module.create_app(manifest)
-            instance.app_closed.connect(
-                lambda aid=app_id: self._on_app_closed(aid)
-            )
-            instance.on_launch()
-            instance.show()
+                # Center the app window over the desktop
+                app_w   = instance.width()  or 400
+                app_h   = instance.height() or 300
+                center_x = dg.x() + (dg.width()  - app_w) // 2
+                center_y = dg.y() + (dg.height() - app_h) // 2
+                instance.move(center_x, center_y)
 
-            self._instances[app_id] = instance
-            return True, instance
+        except Exception:
+            pass   # Centering is cosmetic — never block launch
 
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return False, str(e)
+        instance.on_launch()
+        instance.show()
+        instance.raise_()
+        instance.activateWindow()
+
+        self._instances[app_id] = instance
+        return True, instance
+
+     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return False, str(e)
 
     def close_app(self, app_id):
         """Hides and cleans up a running app."""

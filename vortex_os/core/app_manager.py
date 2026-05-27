@@ -127,16 +127,31 @@ class AppManager(QObject):
         self._desktop.activateWindow()
 
     def _launch_app(self, app_id):
-        """
-        Launches a VORTEX app by id via the AppRegistry.
-        Runs on main thread — safe to create Qt widgets here.
-        """
-        from apps.registry import get_registry
-        registry        = get_registry()
-        success, result = registry.launch(app_id)
-        if not success:
-            print(f"\n  [APP ERROR] {result}\n")
+     """
+    Launches a VORTEX app by id via the AppRegistry.
+    Runs on main thread — safe to create Qt widgets here.
+    Also notifies the desktop taskbar.
+    """
+     from apps.registry import get_registry
+     registry        = get_registry()
+     success, result = registry.launch(app_id)
 
+     if success:
+        # Tell the desktop to show this app in the taskbar
+        if self._desktop:
+            manifest = registry.get(app_id)
+            if manifest:
+                name = manifest.get("name", app_id).upper()
+                self._desktop._add_open_app(name)
+
+                # When the app closes, remove it from taskbar
+                # result is the app instance when success=True
+                result.app_closed.connect(
+                    lambda aid, n=name:
+                        self._desktop._remove_open_app(n)
+                )
+     else:
+        print(f"\n  [APP ERROR] {result}\n")
 
 # ── Global singleton ──────────────────────────────────────
 

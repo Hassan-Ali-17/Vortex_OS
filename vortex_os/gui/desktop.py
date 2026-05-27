@@ -235,23 +235,25 @@ class VortexDesktop(QMainWindow):
         # over the whole desktop area, not locked inside canvas
         self.terminal = TabTerminal(central)
         self.terminal.hide()
+        QTimer.singleShot(100, self._position_terminal)
 
+    # App Launcher Panel — slides over the canvas area
         from gui.app_launcher import AppLauncherPanel
         self.launcher = AppLauncherPanel(central)
         self.launcher.hide()
         self.launcher.app_launch_requested.connect(self._launch_app)
 
-        # Position after layout is ready
-        QTimer.singleShot(100, self._position_terminal)
-
-
     def _launch_app(self, app_id):
-     """Requests app launch via AppManager signal (thread-safe)."""
+     """
+    Called from the launcher panel button clicks.
+    Routes through AppManager signal so it runs on main thread.
+    This method itself IS on the main thread (called from GUI),
+    so we can call AppManager directly.
+    """
      from core.app_manager import get_app_manager
      manager = get_app_manager()
      if manager:
-        manager.app_launch_requested.emit(app_id)
-    
+        manager._launch_app(app_id)   # Direct call — we're already on main thread
 
     def _position_terminal(self):
         """
@@ -349,7 +351,8 @@ class VortexDesktop(QMainWindow):
             self._prefill_active_tab("theme ")
 
         elif action == "desktop":
-            self.launcher.toggle()
+            if hasattr(self, 'launcher'):
+               self.launcher.toggle()
             self.terminal.hide()
             self._remove_open_app("TERMINAL")
 
