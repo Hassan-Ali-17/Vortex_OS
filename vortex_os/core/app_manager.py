@@ -88,6 +88,40 @@ class AppManager(QObject):
         """Safely quits the Qt application."""
         self.app.quit()
 
+    def _do_reboot_animation(self):
+     """
+    Runs on the main thread (called via QTimer.singleShot).
+    Shows boot screen, hides desktop, restores desktop when done.
+    """
+     import json
+
+    # Load config for boot settings
+     try:
+        with open("config/settings.json", "r") as f:
+            cfg = json.load(f)
+     except Exception:
+        cfg = {}
+
+     from gui.boot_screen import BootScreen
+
+    # Hide desktop while boot plays
+     if self._desktop and self._desktop.isVisible():
+        self._desktop.hide()
+
+    # Create and show boot screen
+     self._reboot_screen = BootScreen(config=cfg)
+
+    # When boot finishes restore the desktop
+     def _restore():
+        if self._desktop:
+            self._desktop.show()
+            self._desktop.raise_()
+            self._desktop.activateWindow()
+        # Clean up reference
+        self._reboot_screen = None
+
+     self._reboot_screen.boot_complete.connect(_restore)   
+
     # ─────────────────────────────────────────────
     #  SLOTS — always run on main thread
     #  Qt routes cross-thread signals here safely.

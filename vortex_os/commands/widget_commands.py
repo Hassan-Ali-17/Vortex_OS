@@ -121,6 +121,72 @@ def cmd_newtab(args, config):
 
     print(f"\n{COLORS.SUCCESS}  ◈ New tab requested.{COLORS.RESET}\n")    
 
+# @with_timestamp
+# def cmd_reboot_anim(args, config):
+#     """
+#     Command: reboot
+#     Replays the VORTEX boot animation then restores the desktop.
+#     """
+#     from core.app_manager import get_app_manager
+#     manager = get_app_manager()
+
+#     if manager is None:
+#         print(f"\n{COLORS.ERROR}  [!] Not available.{COLORS.RESET}\n")
+#         return
+
+#     print(f"\n{COLORS.WARNING}  ◈ Replaying boot sequence..."
+#           f"{COLORS.RESET}\n")
+
+#     def _do_reboot():
+#         import json
+#         try:
+#             with open("config/settings.json", "r") as f:
+#                 cfg = json.load(f)
+#         except Exception:
+#             cfg = {}
+
+#         from gui.boot_screen import BootScreen
+
+#         # Hide desktop while boot plays
+#         if manager._desktop:
+#             manager._desktop.hide()
+
+#         boot = BootScreen(config=cfg)
+
+#         def _restore():
+#             if manager._desktop:
+#                 manager._desktop.show()
+#                 manager._desktop.raise_()
+
+#         boot.boot_complete.connect(_restore)
+
+#     manager.desktop_show_requested.connect(_do_reboot)
+#     manager.desktop_show_requested.emit()
+
+@with_timestamp
+def cmd_reboot_anim(args, config):
+    """
+    Command: reboot
+    Replays the VORTEX boot animation then restores the desktop.
+    Uses a direct QTimer call on the main thread via AppManager.
+    """
+    from core.app_manager import get_app_manager
+    from PyQt6.QtCore     import QTimer
+    manager = get_app_manager()
+
+    if manager is None:
+        print(f"\n{COLORS.ERROR}  [!] Not available.{COLORS.RESET}\n")
+        return
+
+    print(f"\n{COLORS.WARNING}  ◈ Replaying boot sequence..."
+          f"{COLORS.RESET}\n")
+
+    # Schedule the boot screen on the main thread using QTimer
+    # QTimer.singleShot is one of the few Qt functions that is
+    # safe to call from any thread — it posts an event to the
+    # main thread's event queue
+    QTimer.singleShot(300, manager._do_reboot_animation)
+
 @with_timestamp
 def cmd_widgets(args, config):
     """

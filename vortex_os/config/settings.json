@@ -10,5 +10,13 @@
         "show_ascii": true,
         "tagline": "INITIALIZE. DOMINATE. EVOLVE.",
         "show_hints": true
+    },
+    "boot": {
+        "enabled": true,
+        "skip_on_restart": false,
+        "duration_ms": 4500,
+        "show_bios": true,
+        "show_logo": true,
+        "show_init": true
     }
 }

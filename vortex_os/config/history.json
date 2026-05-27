@@ -126,7 +126,11 @@
     "desktop",
     "vx core",
     "vx",
-    "desktop"
+    "desktop",
+    "vx",
+    "vx home",
+    "vx",
+    "vx home"
   ],
   "max_entries": 500
 }

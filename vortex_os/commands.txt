@@ -110,3 +110,7 @@ app launch notes            ← opens notes app
 app launch color_picker     ← opens color picker
 app info calculator         ← shows manifest details
 launch notes                ← alias works too
+
+//---------------------------Phase 10 commands--------------------------------\\
+
+reboot                     ← bots the whole os  
