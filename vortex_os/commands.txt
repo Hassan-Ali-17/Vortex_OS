@@ -101,3 +101,12 @@ Click × on a tab        ← close that tab
 vault go vx://config    ← tab title updates to vx://config
 vault go vx://home      ← tab title updates to vx://home
 newtab                  ← console command opens new desktop tab
+
+//---------------------------Phase 9 commands--------------------------------\\
+
+app list                    ← shows all 3 apps
+app launch calculator       ← opens calculator window
+app launch notes            ← opens notes app
+app launch color_picker     ← opens color picker
+app info calculator         ← shows manifest details
+launch notes                ← alias works too
