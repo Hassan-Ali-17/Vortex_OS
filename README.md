@@ -19,8 +19,8 @@
 [![PyQt6](https://img.shields.io/badge/PyQt6-GUI-magenta?style=flat-square)](https://pypi.org/project/PyQt6/)
 [![Platform](https://img.shields.io/badge/Platform-Ubuntu%20Linux-orange?style=flat-square)](https://ubuntu.com)
 [![Phase](https://img.shields.io/badge/Current%20Phase-10%20of%2015-green?style=flat-square)](#development-phases)
-[![Author](https://img.shields.io/badge/Author-Hassan%20Ali%20Shah-cyan?style=flat-square)](https://github.com/Hassan_Ali-17)
-[![GitHub](https://img.shields.io/badge/GitHub-Hassan__Ali--17-blue?style=flat-square&logo=github)](https://github.com/Hassan_Ali-17)
+[![Author](https://img.shields.io/badge/Author-Hassan%20Ali%20Shah-cyan?style=flat-square)](https://github.com/Hassan-Ali-17)
+[![GitHub](https://img.shields.io/badge/GitHub-Hassan__Ali--17-blue?style=flat-square&logo=github)](https://github.com/Hassan-Ali-17)
 
 ---
 
