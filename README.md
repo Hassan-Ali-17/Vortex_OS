@@ -43,7 +43,7 @@ Built from scratch with cyberpunk aesthetics, modular architecture, and a philos
 <div align="center">
 
 ### **Hassan Ali Shah**
-#### GitHub: [@Hassan_Ali-17](https://github.com/Hassan-Ali-17)
+#### GitHub: [@Hassan-Ali-17](https://github.com/Hassan-Ali-17)
 
 *Architect, engineer, and sole developer of VORTEX OS.*  
 *Built phase by phase. No shortcuts. No zip files.*
@@ -599,7 +599,7 @@ MIT License — free to use, modify, and distribute.
 ---
 
 ### Built by **Hassan Ali Shah**
-#### [@Hassan_Ali-17](https://github.com/Hassan_Ali-17) on GitHub
+#### [@Hassan_Ali-17](https://github.com/Hassan-Ali-17) on GitHub
 
 ---
 
