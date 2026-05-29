@@ -98,45 +98,61 @@ class VortexCore(QObject):
                     return
 
     def _after_boot(self):
-        """
-        Called when boot screen finishes (or is skipped).
-        Starts the terminal thread and launches the desktop.
-        """
-        # Start terminal in background thread
-        self.terminal_thread.start()
+     """
+    Called when boot screen finishes.
+    Shows login screen next.
+    """
+     session = self._config.get("session", {})
 
-        # Launch desktop on main thread after short delay
-        QTimer.singleShot(100, self.app_manager.launch_desktop)
+    # Check session.json for auto_login
+     try:
+        import json as _json
+        with open("config/session.json", "r") as f:
+            sess = _json.load(f)
+        auto_login = sess.get("auto_login", False)
+     except Exception:
+        auto_login = False
+
+     if auto_login:
+        # Skip login screen
+        self._after_login()
+     else:
+        # Show login screen
+        from gui.login_screen import LoginScreen
+        self._login_screen = LoginScreen()
+        self._login_screen.login_successful.connect(
+            self._after_login
+        )
+
+    def _after_login(self):
+     """
+    Called when login succeeds (or is skipped).
+    Starts terminal thread and shows desktop.
+    """
+     self.terminal_thread.start()
+     QTimer.singleShot(100, self.app_manager.launch_desktop)
+
 
     def boot(self):
-        """
-        Main boot sequence.
+     """
+    Full boot sequence:
+    1. Boot animation (if enabled)
+    2. Login screen
+    3. Desktop + terminal
+    """
+     self._play_startup_sound()
+ 
+     boot_cfg = self._config.get("boot", {})
+     enabled  = boot_cfg.get("enabled", True)
 
-        If boot animation enabled:
-            show boot screen → wait for boot_complete → show desktop
+     if enabled:
+        from gui.boot_screen import BootScreen
+        self._boot_screen = BootScreen(config=self._config)
+        self._boot_screen.boot_complete.connect(self._after_boot)
+     else:
+        self._after_boot()
 
-        If boot animation disabled:
-            skip straight to terminal + desktop
-        """
-        self._play_startup_sound()
-
-        boot_cfg = self._config.get("boot", {})
-        enabled  = boot_cfg.get("enabled", True)
-
-        if enabled:
-            # Show boot screen
-            from gui.boot_screen import BootScreen
-            self._boot_screen = BootScreen(config=self._config)
-
-            # When animation finishes → proceed
-            self._boot_screen.boot_complete.connect(self._after_boot)
-
-        else:
-            # Skip boot animation — go straight to desktop
-            self._after_boot()
-
-        # Hand control to Qt event loop
-        return self.app_manager.run()
+     return self.app_manager.run()
 
 
 def launch():

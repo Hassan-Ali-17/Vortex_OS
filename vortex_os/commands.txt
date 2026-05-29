@@ -114,3 +114,13 @@ launch notes                ← alias works too
 //---------------------------Phase 10 commands--------------------------------\\
 
 reboot                     ← bots the whole os  
+
+//---------------------------Phase 11 commands--------------------------------\\
+
+
+passwd              ← change your password
+session             ← show session info
+session autologin on  ← skip login screen on next boot
+session autologin off ← re-enable login screen
+session logout      ← marks session inactive
+logout              ← alias

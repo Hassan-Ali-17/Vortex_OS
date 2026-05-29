@@ -20,7 +20,9 @@
         "lm":    "landmark",
         "goto":  "vx" ,
         "nt": "newtab",
-        "launch": "app launch"
+        "launch": "app launch",
+        "sess":   "session",
+        "logout": "session logout"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

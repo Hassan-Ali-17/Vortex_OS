@@ -8,6 +8,7 @@ from terminal.history import HistoryManager
 from commands.theme_commands import cmd_theme, cmd_history
 # Add to imports in terminal/shell.py
 from commands.widget_commands import cmd_clock_gui, cmd_calendar, cmd_widgets, cmd_desktop , cmd_monitor , cmd_newtab ,  cmd_reboot_anim   
+from commands.session_commands import cmd_passwd, cmd_session
 from commands.fs_commands import cmd_vx, cmd_landmark, cmd_vault_vx
 from themes.colors import COLORS
 from terminal.parser import CommandParser
@@ -103,6 +104,8 @@ class VortexShell:
             "newtab":      (cmd_newtab, "Open new tab in desktop terminal"),
             "app":         (cmd_app, "App system — list, launch, install"),
             "reboot":      (cmd_reboot_anim, "Replay boot animation"),
+            "passwd":      (cmd_passwd,  "Change VORTEX login password"),
+            "session":     (cmd_session, "Session info and management"),
         })
 
         self.config["_router"] = self.router

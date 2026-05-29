@@ -1,0 +1,8 @@
+{
+    "username": "hassan",
+    "password_hash": "4c9fbc6e7d959333635af0b6fd748a92afa723eb842bd2288134bff82c1c3d2c",
+    "display_name": "Hassan Ali Shah",
+    "auto_login": false,
+    "max_attempts": 5,
+    "session_active": true
+}
