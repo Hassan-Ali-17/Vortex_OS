@@ -127,6 +127,15 @@ class LoginScreen(QWidget):
         login_successful : emitted when correct password entered
     """
 
+    _THEME_HEX = {
+    "cyberpunk": "#00ffff",
+    "matrix":    "#00ff44",
+    "blood":     "#ff3355",
+    "ghost":     "#e0e0ff",
+    "solar":     "#ffcc00",
+    "arctic":    "#88ddff",
+    }
+
     login_successful = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -139,6 +148,29 @@ class LoginScreen(QWidget):
         self._first_run    = not bool(
             self._session.get("password_hash", "")
         )
+        from themes.theme_engine import THEMES
+        self._theme_colors = []
+        for theme_name, theme_data in THEMES.items():
+         # Each theme stores colorama codes — we need hex colors.
+         # We map theme names to their hex primary colors directly.
+         self._theme_colors.append(
+             self._THEME_HEX.get(theme_name, "#00ffff")
+         )
+        self._theme_idx      = 0
+        self._current_color  = self._theme_colors[0]
+        self._target_color   = self._theme_colors[0]
+        self._transition_step = 0   # 0–20 steps per transition
+        self._in_transition   = False
+
+# Theme cycle timer — advances theme every 10 seconds
+        self._slide_timer = QTimer(self)
+        self._slide_timer.timeout.connect(self._next_theme_color)
+        self._slide_timer.start(10000)
+
+# Smooth transition timer — runs at 30fps during color change
+        self._trans_timer = QTimer(self)
+        self._trans_timer.timeout.connect(self._transition_tick)
+
         self._lock_timer   = None
         self._lock_secs    = 30   # Lockout duration
 
@@ -509,6 +541,126 @@ class LoginScreen(QWidget):
             now.strftime("%A, %d %B %Y  ·  %H:%M:%S").upper()
         )
 
+
+
+    def _next_theme_color(self):
+     """
+    Advances to the next theme color in the slideshow.
+    Called every 10 seconds by _slide_timer.
+    Starts a smooth 20-step color transition.
+     """
+     self._theme_idx    = (self._theme_idx + 1) % len(self._theme_colors)
+     self._target_color = self._theme_colors[self._theme_idx]
+     self._transition_step = 0
+     self._in_transition   = True
+
+    # Start transition timer at ~30fps
+     self._trans_timer.start(33)
+
+    def _transition_tick(self):
+     """
+    Called every 33ms during a color transition.
+    Interpolates _current_color toward _target_color over 20 steps.
+
+    Color interpolation:
+    We parse both hex colors into R,G,B, then lerp each channel
+    separately. At step 20 we snap to the exact target.
+    """
+     self._transition_step += 1
+     total_steps = 20
+
+    # Parse current and target into RGB
+     def hex_to_rgb(h):
+        h = h.lstrip('#')
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+     def rgb_to_hex(r, g, b):
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+     cr, cg, cb = hex_to_rgb(self._current_color)
+     tr, tg, tb = hex_to_rgb(self._target_color)
+
+     t = self._transition_step / total_steps   # 0.0 → 1.0
+
+    # Linear interpolation for each channel
+     nr = int(cr + (tr - cr) * t)
+     ng = int(cg + (tg - cg) * t)
+     nb = int(cb + (tb - cb) * t)
+
+     self._current_color = rgb_to_hex(nr, ng, nb)
+
+    # Update card border and OS label to match new color
+     self._update_card_color(self._current_color)
+
+    # Repaint background
+     self.update()
+
+    # Stop when transition complete
+     if self._transition_step >= total_steps:
+        self._trans_timer.stop()
+        self._current_color = self._target_color
+        self._in_transition  = False
+        self._update_card_color(self._current_color)
+
+    def _update_card_color(self, hex_color):
+     """
+    Updates the card border, login button, and OS label
+    to match the current slideshow color.
+    """
+    # Card border
+     self.card.setStyleSheet(f"""
+        QWidget {{
+            background-color: rgba(10, 10, 20, 220);
+            border: 1px solid {hex_color};
+            border-radius: 8px;
+        }}
+    """)
+
+    # OS label at top of card
+    # Find it by iterating card's children
+     for child in self.card.findChildren(QLabel):
+        if child.text() == "VORTEX OS":
+            child.setStyleSheet(
+                f"color: {hex_color}; font-size: 13px; "
+                f"font-weight: bold; letter-spacing: 6px; border: none;"
+            )
+            break
+
+    # Login button border
+     self.btn_login.setStyleSheet(f"""
+        QPushButton {{
+            background-color: #001a1a;
+            color: {hex_color};
+            border: 1px solid {hex_color};
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }}
+        QPushButton:hover {{
+            background-color: #003333;
+            border-color: white;
+        }}
+    """)
+
+    # Password input focus border
+     self.pw_input.setStyleSheet(f"""
+        QLineEdit {{
+            background-color: #0a0a14;
+            color: {hex_color};
+            border: 1px solid #003333;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 14px;
+            letter-spacing: 3px;
+        }}
+        QLineEdit:focus {{
+            border-color: {hex_color};
+        }}
+    """)
+
     # ─────────────────────────────────────────────
     #  SHAKE ANIMATION
     # ─────────────────────────────────────────────
@@ -549,46 +701,50 @@ class LoginScreen(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        """
-        Draws the animated background behind the login card.
-        Same dot grid as the desktop but slower and darker.
-        """
-        import math
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+     import math
+     painter = QPainter(self)
+     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        w = self.width()
-        h = self.height()
+     w = self.width()
+     h = self.height()
 
-        # Very dark background
-        painter.fillRect(0, 0, w, h, QColor("#030308"))
+     painter.fillRect(0, 0, w, h, QColor("#030308"))
 
-        # Slow pulsing dot grid
-        spacing   = 36
-        cols      = w // spacing + 2
-        rows      = h // spacing + 2
+    # Parse current slideshow color into RGB
+     def hex_to_rgb(hx):
+        hx = hx.lstrip('#')
+        return tuple(int(hx[i:i+2], 16) for i in (0, 2, 4))
 
-        for row in range(rows):
-            for col in range(cols):
-                x          = col * spacing
-                y          = row * spacing
-                phase      = (col + row) * 0.4 + self._tick * 0.02
-                brightness = (math.sin(phase) + 1.0) / 2.0
-                intensity  = int(4 + brightness * 16)
-                color      = QColor(0, intensity, intensity)
+     cr, cg, cb = hex_to_rgb(self._current_color)
 
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(QBrush(color))
-                painter.drawEllipse(
-                    __import__('PyQt6.QtCore', fromlist=['QPointF'])
-                    .QPointF(x, y),
-                    1.0, 1.0
-                )
+    # Dot grid using current theme color
+     spacing = 36
+     cols    = w // spacing + 2
+     rows    = h // spacing + 2
 
-        # Gradient vignette — darkens edges
-        grad = QLinearGradient(0, 0, 0, h)
-        grad.setColorAt(0.0, QColor(0, 0, 0, 120))
-        grad.setColorAt(0.4, QColor(0, 0, 0, 0))
-        grad.setColorAt(0.6, QColor(0, 0, 0, 0))
-        grad.setColorAt(1.0, QColor(0, 0, 0, 120))
-        painter.fillRect(0, 0, w, h, grad)
+     for row in range(rows):
+        for col in range(cols):
+            x          = col * spacing
+            y          = row * spacing
+            phase      = (col + row) * 0.4 + self._tick * 0.02
+            brightness = (math.sin(phase) + 1.0) / 2.0
+            intensity  = brightness * 0.08   # 0.0 – 0.08 multiplier
+
+            dot_r = int(cr * intensity)
+            dot_g = int(cg * intensity)
+            dot_b = int(cb * intensity)
+            color = QColor(dot_r, dot_g, dot_b)
+
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(color))
+
+            from PyQt6.QtCore import QPointF
+            painter.drawEllipse(QPointF(x, y), 1.0, 1.0)
+
+    # Vignette
+     grad = QLinearGradient(0, 0, 0, h)
+     grad.setColorAt(0.0, QColor(0, 0, 0, 120))
+     grad.setColorAt(0.4, QColor(0, 0, 0, 0))
+     grad.setColorAt(0.6, QColor(0, 0, 0, 0))
+     grad.setColorAt(1.0, QColor(0, 0, 0, 120))
+     painter.fillRect(0, 0, w, h, grad)
