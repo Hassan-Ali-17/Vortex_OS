@@ -22,7 +22,8 @@
         "nt": "newtab",
         "launch": "app launch",
         "sess":   "session",
-        "logout": "session logout"
+        "logout": "session logout",
+        "ai": "aria"
     },
     "description": "User-defined command aliases for VORTEX OS"
 }

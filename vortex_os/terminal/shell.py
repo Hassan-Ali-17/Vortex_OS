@@ -14,6 +14,7 @@ from themes.colors import COLORS
 from terminal.parser import CommandParser
 from terminal.router import CommandRouter
 from commands.app_commands import cmd_app
+from commands.ai_commands import cmd_aria
 
 
 # Phase 1 commands
@@ -106,6 +107,8 @@ class VortexShell:
             "reboot":      (cmd_reboot_anim, "Replay boot animation"),
             "passwd":      (cmd_passwd,  "Change VORTEX login password"),
             "session":     (cmd_session, "Session info and management"),
+            "aria":        (cmd_aria, "Open ARIA AI assistant"),
+
         })
 
         self.config["_router"] = self.router

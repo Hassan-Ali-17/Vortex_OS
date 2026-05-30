@@ -15,7 +15,7 @@ from PyQt6.QtGui  import (
     QPainter, QColor, QBrush,
     QLinearGradient, QKeySequence, QShortcut
 )
-
+from gui.ai_panel import AIPanelWidget
 from gui.topbar       import TopBar
 from gui.sidebar      import SidebarDock
 from gui.taskbar      import BottomTaskbar
@@ -239,7 +239,10 @@ class VortexDesktop(QMainWindow):
 
     # App Launcher Panel — slides over the canvas area
         from gui.app_launcher import AppLauncherPanel
-        self.launcher = AppLauncherPanel(central)
+        self.launcher = AppLauncherPanel(central)\
+        # AI Panel — slides in from right edge
+        self.ai_panel = AIPanelWidget(central)
+        self.ai_panel.hide()
         self.launcher.hide()
         self.launcher.app_launch_requested.connect(self._launch_app)
 
@@ -296,6 +299,10 @@ class VortexDesktop(QMainWindow):
         # Ctrl+T: show terminal OR add new tab if already visible
         QShortcut(QKeySequence("Ctrl+T"), self).activated.connect(
             self._handle_ctrl_t
+        )
+        # Ctrl+A — toggle AI panel
+        QShortcut(QKeySequence("Ctrl+A"), self).activated.connect(
+            self._toggle_ai_panel
         )
         # F11: toggle fullscreen
         QShortcut(QKeySequence("F11"), self).activated.connect(
@@ -356,6 +363,9 @@ class VortexDesktop(QMainWindow):
             self.terminal.hide()
             self._remove_open_app("TERMINAL")
 
+        elif action == "ai":           # ← ADD
+             self._toggle_ai_panel()     
+
     def _prefill_active_tab(self, text):
         """
         Pre-fills the input line of the currently active tab.
@@ -389,6 +399,26 @@ class VortexDesktop(QMainWindow):
 
         # Focus the input of the currently visible tab
         QTimer.singleShot(50, self._focus_active_tab)
+
+    def _toggle_ai_panel(self):
+     """Toggles the ARIA AI assistant panel."""
+     if hasattr(self, 'ai_panel'):
+         self.ai_panel.toggle()
+
+    def resizeEvent(self, event):
+     """Keep terminal positioned and AI panel sized on resize."""
+     super().resizeEvent(event)
+     if hasattr(self, 'terminal'):
+         self._position_terminal()
+     if hasattr(self, 'ai_panel') and self.ai_panel._visible:
+        central = self.centralWidget()
+        self.ai_panel.resize(
+            AIPanelWidget.WIDTH,
+            central.height()
+        )
+        self.ai_panel.move(
+            central.width() - AIPanelWidget.WIDTH, 0
+        )    
 
     def _focus_active_tab(self):
         """Focuses the input line of the active tab."""

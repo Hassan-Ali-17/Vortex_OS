@@ -38,7 +38,7 @@ class SidebarDock(QWidget):
         self.setStyleSheet(SIDEBAR)
         self._active_action = None
         self._buttons = {}
-        self._indicators    = {}
+        self._indicators = {}
         self._build_ui()
 
     def _build_ui(self):
@@ -51,6 +51,7 @@ class SidebarDock(QWidget):
         primary_items = [
             ("⬡",  "desktop",  "Desktop"),
             ("▶",  "terminal", "Terminal  [Ctrl+T]"),
+            ("◈",  "ai",       "ARIA AI Assistant  [Ctrl+A]"),  
             ("◉",  "clock",    "Clock Widget"),
             ("◈",  "calendar", "Calendar Widget"),
             ("⚡",  "scan",     "System Scanner"),
