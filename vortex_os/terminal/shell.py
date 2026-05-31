@@ -15,6 +15,7 @@ from terminal.parser import CommandParser
 from terminal.router import CommandRouter
 from commands.app_commands import cmd_app
 from commands.ai_commands import cmd_aria
+from commands.voice_commands import cmd_voice
 
 
 # Phase 1 commands
@@ -108,6 +109,7 @@ class VortexShell:
             "passwd":      (cmd_passwd,  "Change VORTEX login password"),
             "session":     (cmd_session, "Session info and management"),
             "aria":        (cmd_aria, "Open ARIA AI assistant"),
+            "voice":       (cmd_voice, "Voice assistant controls"),
 
         })
 

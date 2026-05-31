@@ -202,108 +202,142 @@ class AIPanelWidget(QWidget):
             }
 
     def _build_ui(self):
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+     layout = QVBoxLayout()
+     layout.setContentsMargins(0, 0, 0, 0)
+     layout.setSpacing(0)
 
-        # ── Header ─────────────────────────────────
-        header = QWidget()
-        header.setFixedHeight(44)
-        header.setStyleSheet(HEADER_STYLE)
+    # ── Header ─────────────────────────────────
+     header = QWidget()
+     header.setFixedHeight(44)
+     header.setStyleSheet(HEADER_STYLE)
+ 
+     h_layout = QHBoxLayout()
+     h_layout.setContentsMargins(12, 0, 8, 0) 
 
-        h_layout = QHBoxLayout()
-        h_layout.setContentsMargins(12, 0, 8, 0)
+     lbl_title = QLabel("◈ ARIA  —  AI ASSISTANT")
+     lbl_title.setStyleSheet(
+        "color: #cc00ff; font-size: 11px; font-weight: bold;"
+        "letter-spacing: 3px;"
+     )
 
-        lbl_title = QLabel("◈ ARIA  —  AI ASSISTANT")
-        lbl_title.setStyleSheet(
-            "color: #cc00ff; font-size: 11px; font-weight: bold;"
-            "letter-spacing: 3px;"
+     btn_clear = QPushButton("✕ CLEAR")
+     btn_clear.setFixedSize(70, 28)
+     btn_clear.setStyleSheet("""
+        QPushButton {
+            background: transparent;
+            color: #333355;
+            border: 1px solid #1a1a2e;
+            font-size: 10px;
+            font-family: monospace;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            color: #cc00ff;
+            border-color: #cc00ff;
+        }
+     """)
+     btn_clear.clicked.connect(self._clear_conversation)
+
+     self.btn_mic = QPushButton("🎤")
+     self.btn_mic.setFixedSize(36, 28)
+     self.btn_mic.setCheckable(True)
+     self.btn_mic.setStyleSheet("""
+        QPushButton {
+            background: transparent;
+            color: #333355;
+            border: 1px solid #1a1a2e;
+            font-size: 14px;
+            padding: 2px;
+            border-radius: 4px;
+        }
+        QPushButton:checked {
+            color: #cc00ff;
+            border-color: #cc00ff;
+            background: #1a0a2e;
+        }
+        QPushButton:hover {
+            color: #cc00ff;
+            border-color: #660088;
+        }
+    """)
+     self.btn_mic.clicked.connect(self._toggle_mic)
+
+    # Correct order: title LEFT, buttons RIGHT
+     h_layout.addWidget(lbl_title)
+     h_layout.addStretch()
+     h_layout.addWidget(self.btn_mic)
+     h_layout.addWidget(btn_clear)
+     header.setLayout(h_layout)
+
+    # ── Output area ────────────────────────────
+     self.output = QTextEdit()
+     self.output.setReadOnly(True)
+     self.output.setStyleSheet(OUTPUT_STYLE)
+     self.output.setFont(QFont("monospace", 11))
+
+    # ── Thinking indicator ─────────────────────
+     self.lbl_thinking = QLabel("")
+     self.lbl_thinking.setFixedHeight(20)
+     self.lbl_thinking.setStyleSheet(
+        "color: #440066; font-size: 10px; "
+        "font-family: monospace; padding-left: 10px;"
+        "background: #07070e;"
+    )
+
+    # ── Input row ──────────────────────────────
+     input_row = QHBoxLayout()
+     input_row.setContentsMargins(0, 0, 0, 0)
+     input_row.setSpacing(0)
+
+     self.prompt_lbl = QLabel("ARIA > ")
+     self.prompt_lbl.setStyleSheet(
+        "color: #cc00ff; font-family: monospace; font-size: 12px;"
+        "padding: 8px 4px 8px 10px; background: #0d0a1a;"
+        "border-top: 1px solid #1a0a2e;"
+     )
+
+     self.input_line = QLineEdit()
+     self.input_line.setStyleSheet(INPUT_STYLE)
+     self.input_line.setPlaceholderText("Ask ARIA anything...")
+     self.input_line.returnPressed.connect(self._on_submit)
+
+     input_row.addWidget(self.prompt_lbl)
+     input_row.addWidget(self.input_line)
+
+    # ── API key hint ───────────────────────────
+     self.lbl_hint = QLabel("Groq API key required")
+     self.lbl_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+     self.lbl_hint.setFixedHeight(20)
+     self.lbl_hint.setStyleSheet(
+        "color: #220033; font-size: 9px; "
+        "font-family: monospace; background: #07070e;"
+     )
+
+    # Check config file first then environment
+     import json as _json
+     try:
+        with open("config/ai_config.json", "r") as f:
+            _ai_cfg = _json.load(f)
+        _key = _ai_cfg.get("api_key", "").strip()
+     except Exception:
+        _key = ""
+
+     if not _key:
+        _key = os.environ.get(
+            self._config.get("api_key_env", "GROQ_API_KEY"), ""
         )
 
-        btn_clear = QPushButton("✕ CLEAR")
-        btn_clear.setFixedSize(70, 28)
-        btn_clear.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #333355;
-                border: 1px solid #1a1a2e;
-                font-size: 10px;
-                font-family: monospace;
-                padding: 2px;
-            }
-            QPushButton:hover {
-                color: #cc00ff;
-                border-color: #cc00ff;
-            }
-        """)
-        btn_clear.clicked.connect(self._clear_conversation)
+     self.lbl_hint.setVisible(not bool(_key))
 
-        h_layout.addWidget(lbl_title)
-        h_layout.addStretch()
-        h_layout.addWidget(btn_clear)
-        header.setLayout(h_layout)
+    # ── Assemble ───────────────────────────────
+     layout.addWidget(header)
+     layout.addWidget(self.output, 1)
+     layout.addWidget(self.lbl_thinking)
+     layout.addWidget(self.lbl_hint)
+     layout.addLayout(input_row)
 
-        # ── Output area ────────────────────────────
-        self.output = QTextEdit()
-        self.output.setReadOnly(True)
-        self.output.setStyleSheet(OUTPUT_STYLE)
-        self.output.setFont(QFont("monospace", 11))
-
-        # ── Thinking indicator ─────────────────────
-        self.lbl_thinking = QLabel("")
-        self.lbl_thinking.setFixedHeight(20)
-        self.lbl_thinking.setStyleSheet(
-            "color: #440066; font-size: 10px; "
-            "font-family: monospace; padding-left: 10px;"
-            "background: #07070e;"
-        )
-
-        # ── Input row ──────────────────────────────
-        input_row = QHBoxLayout()
-        input_row.setContentsMargins(0, 0, 0, 0)
-        input_row.setSpacing(0)
-
-        self.prompt_lbl = QLabel("ARIA > ")
-        self.prompt_lbl.setStyleSheet(
-            "color: #cc00ff; font-family: monospace; font-size: 12px;"
-            "padding: 8px 4px 8px 10px; background: #0d0a1a;"
-            "border-top: 1px solid #1a0a2e;"
-        )
-
-        self.input_line = QLineEdit()
-        self.input_line.setStyleSheet(INPUT_STYLE)
-        self.input_line.setPlaceholderText("Ask ARIA anything...")
-        self.input_line.returnPressed.connect(self._on_submit)
-
-        input_row.addWidget(self.prompt_lbl)
-        input_row.addWidget(self.input_line)
-
-        # ── API key hint ───────────────────────────
-        self.lbl_hint = QLabel(
-            "Set ANTHROPIC_API_KEY to activate"
-        )
-        self.lbl_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_hint.setFixedHeight(20)
-        self.lbl_hint.setStyleSheet(
-            "color: #220033; font-size: 9px; "
-            "font-family: monospace; background: #07070e;"
-        )
-
-        # Show hint only if key not set
-        api_key = os.environ.get(
-            self._config.get("api_key_env", "ANTHROPIC_API_KEY"), ""
-        )
-        self.lbl_hint.setVisible(not bool(api_key))
-
-        # ── Assemble ───────────────────────────────
-        layout.addWidget(header)
-        layout.addWidget(self.output, 1)
-        layout.addWidget(self.lbl_thinking)
-        layout.addWidget(self.lbl_hint)
-        layout.addLayout(input_row)
-
-        self.setLayout(layout)
-        self._print_welcome()
+     self.setLayout(layout)
+     self._print_welcome()
 
     def _print_welcome(self):
         """Prints the welcome message."""
@@ -317,6 +351,54 @@ class AIPanelWidget(QWidget):
     # ─────────────────────────────────────────────
     #  CONVERSATION
     # ─────────────────────────────────────────────
+
+
+    def _toggle_mic(self, checked):
+     """
+     Toggles voice input for the AI panel.
+     When active: listens for speech and fills the input field.
+     """
+     from core.voice_engine import get_voice_engine
+     engine = get_voice_engine()
+
+     if checked:
+        # Start listening
+        self.btn_mic.setText("🔴")
+        self.input_line.setPlaceholderText("Listening...")
+
+        def _on_speech(text):
+            # Put recognized text into input and submit
+            self.input_line.setText(text)
+            self.btn_mic.setChecked(False)
+            self.btn_mic.setText("🎤")
+            self.input_line.setPlaceholderText(
+                "Ask ARIA anything..."
+            )
+            self._on_submit()
+
+        def _on_error(msg):
+            self.btn_mic.setChecked(False)
+            self.btn_mic.setText("🎤")
+            self.input_line.setPlaceholderText(
+                "Ask ARIA anything..."
+            )
+            self._append("ERROR", msg, "#ff3355")
+
+        # Disconnect previous connections to avoid duplicates
+        try:
+            engine.speech_recognized.disconnect()
+            engine.error_occurred.disconnect()
+        except Exception:
+            pass
+
+        engine.speech_recognized.connect(_on_speech)
+        engine.error_occurred.connect(_on_error)
+        engine.listen_once()
+
+     else:
+        engine.stop_continuous_listening()
+        self.btn_mic.setText("🎤")
+        self.input_line.setPlaceholderText("Ask ARIA anything...")
 
     def _on_submit(self):
         """Handles user pressing Enter in the input field."""
@@ -436,6 +518,16 @@ class AIPanelWidget(QWidget):
                 "role":    "assistant",
                 "content": self._response_buffer
             })
+
+
+           # Speak the response if voice is enabled
+        try:
+            from core.voice_engine import get_voice_engine
+            ve = get_voice_engine()
+            ve.speak(self._response_buffer)    # ← ADD THIS
+        except Exception:
+            pass   # TTS failure never blocks the UI
+ 
             self._response_buffer = ""
 
         # Add spacing after response

@@ -1,0 +1,12 @@
+{
+    "enabled": true,
+    "language": "en-US",
+    "tts_rate": 165,
+    "tts_volume": 0.9,
+    "tts_voice_index": 0,
+    "wake_word": "aria",
+    "command_mode_timeout": 8,
+    "speak_responses": true,
+    "speak_max_chars": 400,
+    "recognizer": "google"
+}
