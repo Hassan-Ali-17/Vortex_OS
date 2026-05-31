@@ -1,8 +1,10 @@
 {
     "enabled": true,
-    "model": "claude-sonnet-4-20250514",
+    "model": "llama-3.3-70b-versatile",
     "max_tokens": 1024,
     "system_prompt": "You are ARIA (Advanced Reasoning and Intelligence Assistant), the built-in AI assistant for VORTEX OS. You are concise, helpful, and speak with a subtle cyberpunk personality. You know about VORTEX OS commands, Linux, Python, and general computing. Keep responses short and practical unless asked for detail. When showing commands use backticks.",
-    "api_key_env": "ANTHROPIC_API_KEY",
-    "history_limit": 20
+    "api_key": "your-groq-api-key-here",
+    "api_key_env": "GROQ_API_KEY",
+    "history_limit": 20,
+    "provider": "groq"
 }

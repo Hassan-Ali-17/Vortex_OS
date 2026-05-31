@@ -5,8 +5,7 @@
 import json
 import os
 import threading
-import urllib.request
-import urllib.error
+
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
@@ -66,14 +65,9 @@ INPUT_STYLE = """
 
 class _APIWorker(QObject):
     """
-    Calls the Anthropic API in a background thread.
-    Emits response_chunk for each streamed token
-    and response_done when complete.
-
-    Why a separate QObject worker?
-    API calls can take 2-10 seconds. Running on the main thread
-    would freeze the entire GUI. We run it in a Python thread
-    and communicate back via Qt signals.
+    Calls the Groq API using the official openai Python library.
+    Groq is OpenAI-compatible so the same client works.
+    Using the library instead of urllib bypasses Cloudflare blocking.
     """
 
     response_chunk = pyqtSignal(str)
@@ -86,73 +80,72 @@ class _APIWorker(QObject):
         self.config   = config
 
     def run(self):
-        """Calls the API and emits chunks as they arrive."""
-        api_key = os.environ.get(
-            self.config.get("api_key_env", "ANTHROPIC_API_KEY"), ""
-        )
+        """
+        Calls Groq API via openai library with streaming.
+        """
+        # Get API key
+        api_key = self.config.get("api_key", "").strip()
+        if not api_key:
+            api_key = os.environ.get(
+                self.config.get("api_key_env", "GROQ_API_KEY"), ""
+            ).strip()
 
         if not api_key:
             self.response_error.emit(
-                "ANTHROPIC_API_KEY not set.\n"
-                "Run: export ANTHROPIC_API_KEY=your_key_here"
+                "No API key found.\n"
+                "Add api_key to config/ai_config.json"
             )
             return
 
-        payload = {
-            "model":      self.config.get("model",
-                          "claude-sonnet-4-20250514"),
-            "max_tokens": self.config.get("max_tokens", 1024),
-            "system":     self.config.get("system_prompt", ""),
-            "messages":   self.messages,
-            "stream":     True,
-        }
-
-        headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         api_key,
-            "anthropic-version": "2023-06-01",
-        }
+        # Build messages with system prompt
+        messages = [
+            {
+                "role":    "system",
+                "content": self.config.get("system_prompt", "")
+            }
+        ] + list(self.messages)
 
         try:
-            req  = urllib.request.Request(
-                "https://api.anthropic.com/v1/messages",
-                data    = json.dumps(payload).encode(),
-                headers = headers,
-                method  = "POST"
+            from openai import OpenAI
+
+            # Point the OpenAI client at Groq's endpoint
+            client = OpenAI(
+                api_key  = api_key,
+                base_url = "https://api.groq.com/openai/v1"
             )
 
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                for raw_line in resp:
-                    line = raw_line.decode("utf-8").strip()
+            # Stream the response
+            stream = client.chat.completions.create(
+                model      = self.config.get("model",
+                             "llama-3.3-70b-versatile"),
+                max_tokens = self.config.get("max_tokens", 1024),
+                messages   = messages,
+                stream     = True,
+            )
 
-                    if not line.startswith("data:"):
-                        continue
+            for chunk in stream:
+                # Extract text from each chunk
+                choices = chunk.choices
+                if not choices:
+                    continue
+                delta   = choices[0].delta
+                content = getattr(delta, "content", None)
+                if content:
+                    self.response_chunk.emit(content)
 
-                    data_str = line[5:].strip()
+        except ImportError:
+            self.response_error.emit(
+                "openai library not installed.\n"
+                "Run: pip3 install openai"
+            )
 
-                    if data_str == "[DONE]":
-                        break
-
-                    try:
-                        data = json.loads(data_str)
-                    except json.JSONDecodeError:
-                        continue
-
-                    # Extract text delta from stream
-                    if data.get("type") == "content_block_delta":
-                        delta = data.get("delta", {})
-                        if delta.get("type") == "text_delta":
-                            text = delta.get("text", "")
-                            if text:
-                                self.response_chunk.emit(text)
-
-        except urllib.error.HTTPError as e:
-            body = e.read().decode()
-            self.response_error.emit(f"API Error {e.code}: {body[:200]}")
-        except urllib.error.URLError as e:
-            self.response_error.emit(f"Network error: {e.reason}")
         except Exception as e:
-            self.response_error.emit(f"Error: {str(e)}")
+            import traceback
+            self.response_error.emit(
+                f"Error: {str(e)}\n"
+                f"{traceback.format_exc()[-400:]}"
+            )
+
         finally:
             self.response_done.emit()
 
@@ -378,34 +371,51 @@ class AIPanelWidget(QWidget):
         return False
 
     def _send_to_api(self):
-        """Starts the API call in a background thread."""
-        self._is_thinking = True
-        self._think_dots  = 0
-        self._think_timer.start(400)
-        self.input_line.setEnabled(False)
+     """
+    Starts the API call.
+    Creates worker, connects signals, runs in daemon thread.
+    The key fix: we use moveToThread pattern properly OR
+    we connect signals before starting the thread.
+    """
+     self._is_thinking     = True
+     self._think_dots      = 0
+     self._response_buffer = ""
+     self._think_timer.start(400)
+     self.input_line.setEnabled(False)
 
-        # Create worker
-        worker = _APIWorker(
-            messages = list(self._history),
-            config   = self._config
-        )
-        worker.response_chunk.connect(self._on_chunk)
-        worker.response_done.connect(self._on_done)
-        worker.response_error.connect(self._on_error)
+    # Prepare the output area for streaming
+     self._append_start("ARIA", "#cc00ff")
 
-        # Keep reference
-        self._worker = worker
+    # Create worker — signals connected BEFORE thread starts
+     self._worker = _APIWorker(
+        messages = list(self._history),
+        config   = self._config
+     )
 
-        # Start in Python thread (not QThread — simpler for this use)
-        self._api_thread = threading.Thread(
-            target=worker.run, daemon=True
-        )
+    # Connect signals — these must be connected before thread starts
+    # Using Qt.ConnectionType.QueuedConnection ensures signals
+    # posted from the worker thread are safely delivered to the
+    # main thread's event queue
+     from PyQt6.QtCore import Qt as _Qt
+     self._worker.response_chunk.connect(
+        self._on_chunk,
+        _Qt.ConnectionType.QueuedConnection
+     )
+     self._worker.response_done.connect(
+        self._on_done,
+        _Qt.ConnectionType.QueuedConnection
+     )
+     self._worker.response_error.connect(
+        self._on_error,
+        _Qt.ConnectionType.QueuedConnection
+     )
 
-        # Prepare output area for streamed response
-        self._append_start("ARIA", "#cc00ff")
-        self._response_buffer = ""
-
-        self._api_thread.start()
+    # Run in daemon thread
+     self._api_thread = threading.Thread(
+        target=self._worker.run,
+        daemon=True
+     )
+     self._api_thread.start()
 
     def _on_chunk(self, text):
         """Called for each streamed token — appends to output."""
