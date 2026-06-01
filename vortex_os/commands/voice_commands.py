@@ -92,23 +92,57 @@ def _check_microphone():
 
 
 def _voice_once(engine, config):
-    """Listens for one phrase and processes it."""
+    """
+    Listens for one phrase and processes it.
+    Uses QTimer to ensure proper event loop sequencing.
+    """
+    from PyQt6.QtCore import QTimer, Qt
+
     print(f"\n{COLORS.ACCENT}  ◈ Listening... speak now."
           f"{COLORS.RESET}")
     print(f"  {COLORS.DIM}Speak a VORTEX command or question."
           f"{COLORS.RESET}\n")
 
-    # Connect signal to handler
+    # Disconnect any previous connections
+    try:
+        engine.speech_recognized.disconnect()
+    except Exception:
+        pass
+    try:
+        engine.error_occurred.disconnect()
+    except Exception:
+        pass
+
     def _on_speech(text):
+        try:
+            engine.speech_recognized.disconnect()
+            engine.error_occurred.disconnect()
+        except Exception:
+            pass
         print(f"\n{COLORS.SUCCESS}  ◈ Heard: \"{text}\""
               f"{COLORS.RESET}")
-        _process_voice_input(text, engine, config)
+        # Small delay then process — ensures event loop is clear
+        QTimer.singleShot(
+            50,
+            lambda: _process_voice_input(text, engine, config)
+        )
 
     def _on_error(msg):
+        try:
+            engine.speech_recognized.disconnect()
+            engine.error_occurred.disconnect()
+        except Exception:
+            pass
         print(f"\n{COLORS.ERROR}  [!] {msg}{COLORS.RESET}\n")
 
-    engine.speech_recognized.connect(_on_speech)
-    engine.error_occurred.connect(_on_error)
+    engine.speech_recognized.connect(
+        _on_speech,
+        Qt.ConnectionType.QueuedConnection
+    )
+    engine.error_occurred.connect(
+        _on_error,
+        Qt.ConnectionType.QueuedConnection
+    )
     engine.listen_once()
 
 

@@ -185,75 +185,88 @@ class VoiceEngine(QObject):
         thread.start()
 
     def _do_listen_once(self):
-        """The actual listening logic — runs off main thread."""
-        try:
-            import speech_recognition as sr
-        except ImportError:
-            self.error_occurred.emit(
-                "SpeechRecognition not installed.\n"
-                "Run: pip3 install SpeechRecognition"
-            )
-            return
+     """
+     Listens for one phrase.
+     Uses a fixed low energy threshold instead of auto-calibration.
+     Auto-calibration was setting threshold to 36000+ on this system
+     which prevented any speech from being detected.
+     """
+     try:
+        import speech_recognition as sr
+     except ImportError:
+        self.error_occurred.emit(
+            "SpeechRecognition not installed.\n"
+            "Run: pip3 install SpeechRecognition"
+        )
+        return
 
-        self._listening = True
-        self.listening_started.emit()
+     self._listening = True
+     self.listening_started.emit()
 
-        recognizer = sr.Recognizer()
+     recognizer = sr.Recognizer()
 
-        # Adjust for ambient noise — important in noisy environments
-        # This takes about 0.5 seconds
-        try:
-            with sr.Microphone() as source:
-                recognizer.adjust_for_ambient_noise(
-                    source, duration=0.5
+    # Fixed threshold — do NOT use adjust_for_ambient_noise
+    # On this system auto-calibration produces 36000+ which
+    # is way too high for any voice to trigger recording
+     recognizer.energy_threshold         = 300
+     recognizer.dynamic_energy_threshold = False
+     recognizer.pause_threshold          = 0.8
+
+     mic_index = self._config.get("microphone_index", 0)
+
+     try:
+        with sr.Microphone(device_index=mic_index) as source:
+            print("  [Voice] Listening — speak now...")
+
+            try:
+                audio = recognizer.listen(
+                    source,
+                    timeout=10,
+                    phrase_time_limit=15
                 )
+                print("  [Voice] Audio captured, transcribing...")
 
-                # Listen for speech — timeout after 8 seconds of silence
-                try:
-                    audio = recognizer.listen(
-                        source,
-                        timeout=8,
-                        phrase_time_limit=15
-                    )
-                except sr.WaitTimeoutError:
-                    self.listening_stopped.emit()
-                    self._listening = False
-                    self.error_occurred.emit(
-                        "No speech detected. Try again."
-                    )
-                    return
+            except sr.WaitTimeoutError:
+                self.listening_stopped.emit()
+                self._listening = False
+                self.error_occurred.emit(
+                    "No speech detected.\n"
+                    "Speak louder or closer to the microphone."
+                )
+                return
 
-        except OSError as e:
-            self.listening_stopped.emit()
-            self._listening = False
-            self.error_occurred.emit(
-                f"Microphone error: {e}\n"
-                f"Check your microphone is connected."
-            )
-            return
-
+     except OSError as e:
         self.listening_stopped.emit()
         self._listening = False
+        self.error_occurred.emit(f"Microphone error: {e}")
+        return
 
-        # Transcribe the audio
-        lang = self._config.get("language", "en-US")
+     except Exception as e:
+        self.listening_stopped.emit()
+        self._listening = False
+        self.error_occurred.emit(f"Mic error: {e}")
+        return
 
-        try:
-            text = recognizer.recognize_google(
-                audio, language=lang
-            )
-            self.speech_recognized.emit(text)
+     self.listening_stopped.emit()
+     self._listening = False
 
-        except sr.UnknownValueError:
-            self.error_occurred.emit(
-                "Could not understand audio. Please speak clearly."
-            )
-        except sr.RequestError as e:
-            self.error_occurred.emit(
-                f"Speech recognition error: {e}\n"
-                f"Check your internet connection."
-            )
+     lang = self._config.get("language", "en-US")
 
+     try:
+        text = recognizer.recognize_google(audio, language=lang)
+        print(f"  [Voice] Recognized: '{text}'")
+        self.speech_recognized.emit(text)
+
+     except sr.UnknownValueError:
+        self.error_occurred.emit(
+            "Could not understand speech.\n"
+            "Please speak clearly and try again."
+        )
+     except sr.RequestError as e:
+        self.error_occurred.emit(
+            f"Google Speech API error: {e}\n"
+            f"Check your internet connection."
+        )
     def start_continuous_listening(self, callback):
         """
         Starts continuous background listening.
@@ -275,47 +288,49 @@ class VoiceEngine(QObject):
         self._listen_thread.start()
 
     def _continuous_loop(self, callback):
-        """Continuous listening loop — runs in background thread."""
-        try:
-            import speech_recognition as sr
-        except ImportError:
-            self.error_occurred.emit(
-                "SpeechRecognition not installed."
-            )
-            return
+     """Continuous listening loop — no auto-calibration."""
+     try:
+        import speech_recognition as sr
+     except ImportError:
+        self.error_occurred.emit("SpeechRecognition not installed.")
+        return
 
-        recognizer = sr.Recognizer()
-        lang       = self._config.get("language", "en-US")
+     recognizer = sr.Recognizer()
+     recognizer.energy_threshold         = 300
+     recognizer.dynamic_energy_threshold = False
+     recognizer.pause_threshold          = 0.8
 
-        self._listening = True
-        self.listening_started.emit()
+     lang      = self._config.get("language", "en-US")
+     mic_index = self._config.get("microphone_index", 0)
 
-        with sr.Microphone() as source:
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+     self._listening = True
+     self.listening_started.emit()
 
-            while self._continuous:
+     with sr.Microphone(device_index=mic_index) as source:
+        # NO adjust_for_ambient_noise here
+        while self._continuous:
+            try:
+                audio = recognizer.listen(
+                    source,
+                    timeout=2,
+                    phrase_time_limit=12
+                )
                 try:
-                    audio = recognizer.listen(
-                        source,
-                        timeout=2,
-                        phrase_time_limit=12
+                    text = recognizer.recognize_google(
+                        audio, language=lang
                     )
-                    try:
-                        text = recognizer.recognize_google(
-                            audio, language=lang
-                        )
-                        if text.strip():
-                            callback(text.strip())
-                    except sr.UnknownValueError:
-                        pass   # Silence or unclear — just continue
-                    except sr.RequestError:
-                        pass   # Network hiccup — continue
+                    if text.strip():
+                        callback(text.strip())
+                except sr.UnknownValueError:
+                    pass
+                except sr.RequestError:
+                    pass
 
-                except sr.WaitTimeoutError:
-                    pass   # Normal — no speech in this window
+            except sr.WaitTimeoutError:
+                pass
 
-        self._listening = False
-        self.listening_stopped.emit()
+     self._listening = False
+     self.listening_stopped.emit()
 
     def stop_continuous_listening(self):
         """Stops the continuous listening loop."""

@@ -355,50 +355,108 @@ class AIPanelWidget(QWidget):
 
     def _toggle_mic(self, checked):
      """
-     Toggles voice input for the AI panel.
-     When active: listens for speech and fills the input field.
+     Toggles voice input.
+     Clean version — no imports inside lambdas.
      """
      from core.voice_engine import get_voice_engine
+     from PyQt6.QtCore import QTimer, Qt
+
      engine = get_voice_engine()
 
-     if checked:
-        # Start listening
-        self.btn_mic.setText("🔴")
-        self.input_line.setPlaceholderText("Listening...")
-
-        def _on_speech(text):
-            # Put recognized text into input and submit
-            self.input_line.setText(text)
-            self.btn_mic.setChecked(False)
-            self.btn_mic.setText("🎤")
-            self.input_line.setPlaceholderText(
-                "Ask ARIA anything..."
-            )
-            self._on_submit()
-
-        def _on_error(msg):
-            self.btn_mic.setChecked(False)
-            self.btn_mic.setText("🎤")
-            self.input_line.setPlaceholderText(
-                "Ask ARIA anything..."
-            )
-            self._append("ERROR", msg, "#ff3355")
-
-        # Disconnect previous connections to avoid duplicates
+     if not checked:
+        # User unchecked the mic button manually
         try:
             engine.speech_recognized.disconnect()
+        except Exception:
+            pass
+        try:
             engine.error_occurred.disconnect()
         except Exception:
             pass
-
-        engine.speech_recognized.connect(_on_speech)
-        engine.error_occurred.connect(_on_error)
-        engine.listen_once()
-
-     else:
         engine.stop_continuous_listening()
         self.btn_mic.setText("🎤")
         self.input_line.setPlaceholderText("Ask ARIA anything...")
+        return
+
+    # ── Mic activated ──────────────────────────────────────
+     self.btn_mic.setText("🔴")
+     self.input_line.setPlaceholderText("Listening... speak now")
+
+    # Always disconnect previous connections first
+     try:
+        engine.speech_recognized.disconnect()
+     except Exception:
+        pass
+     try:
+         engine.error_occurred.disconnect()
+     except Exception:
+        pass
+
+    # Connect using AutoConnection — simpler and more reliable
+    # than QueuedConnection when the receiver is a GUI object
+     engine.speech_recognized.connect(self._on_voice_speech)
+     engine.error_occurred.connect(self._on_voice_error)
+
+    # Start listening
+     engine.listen_once()
+
+
+    def _on_voice_speech(self, text):
+     """
+    Slot called when voice recognition completes.
+    Defined as a proper method — not a lambda or nested function.
+    This is more reliable for cross-thread signal delivery.
+    """
+     from core.voice_engine import get_voice_engine
+     from PyQt6.QtCore import QTimer
+
+     engine = get_voice_engine()
+
+    # Disconnect immediately to prevent double-firing
+     try:
+        engine.speech_recognized.disconnect(self._on_voice_speech)
+     except Exception:
+        pass
+     try:
+        engine.error_occurred.disconnect(self._on_voice_error)
+     except Exception:
+        pass
+
+     print(f"  [Voice] Submitting to ARIA: '{text}'")
+
+    # Reset mic button state
+     self.btn_mic.setChecked(False)
+     self.btn_mic.setText("🎤")
+     self.input_line.setPlaceholderText("Ask ARIA anything...")
+
+    # Set text and submit after a short delay
+    # 100ms gives Qt enough time to process the button state changes
+    # before _on_submit reads the input field
+     self.input_line.setText(text)
+     QTimer.singleShot(100, self._on_submit)
+
+
+    def _on_voice_error(self, msg):
+     """
+    Slot called when voice recognition fails.
+    Defined as a proper method for reliable signal delivery.
+    """
+     from core.voice_engine import get_voice_engine
+     engine = get_voice_engine()
+
+     try:
+        engine.speech_recognized.disconnect(self._on_voice_speech)
+     except Exception:
+        pass
+     try:
+        engine.error_occurred.disconnect(self._on_voice_error)
+     except Exception:
+        pass
+
+     self.btn_mic.setChecked(False)
+     self.btn_mic.setText("🎤")
+     self.input_line.setPlaceholderText("Ask ARIA anything...")
+     self._append("VOICE", msg, "#ff3355")
 
     def _on_submit(self):
         """Handles user pressing Enter in the input field."""

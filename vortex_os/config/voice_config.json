@@ -8,5 +8,7 @@
     "command_mode_timeout": 8,
     "speak_responses": true,
     "speak_max_chars": 400,
-    "recognizer": "google"
+    "recognizer": "google",
+    "microphone_index": 0,
+    "energy_threshold": 200
 }
