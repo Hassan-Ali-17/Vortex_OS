@@ -167,47 +167,42 @@ class VoiceEngine(QObject):
     # ─────────────────────────────────────────────
 
     def listen_once(self):
-        """
-        Listens for one phrase from the microphone.
-        Runs in a background thread.
-        Emits speech_recognized(text) when done.
+     """
+    Listens for one phrase from the microphone.
+    Runs recognition in background thread.
+    Uses a direct callback instead of signals to avoid
+    cross-thread signal delivery issues.
+    """
+     if self._listening:
+        return
 
-        Uses Google's free speech recognition API.
-        Requires internet connection.
-        """
-        if self._listening:
-            return
-
-        thread = threading.Thread(
-            target=self._do_listen_once,
-            daemon=True
-        )
-        thread.start()
-
+     thread = threading.Thread(
+        target=self._do_listen_once,
+        daemon=True
+     )
+     thread.start()
     def _do_listen_once(self):
      """
-     Listens for one phrase.
-     Uses a fixed low energy threshold instead of auto-calibration.
-     Auto-calibration was setting threshold to 36000+ on this system
-     which prevented any speech from being detected.
-     """
+    Runs in background thread.
+    Uses QTimer.singleShot to deliver results to main thread
+    instead of signals — more reliable for cross-thread delivery.
+    """
      try:
         import speech_recognition as sr
      except ImportError:
-        self.error_occurred.emit(
+        self._deliver_error(
             "SpeechRecognition not installed.\n"
             "Run: pip3 install SpeechRecognition"
         )
         return
 
      self._listening = True
-     self.listening_started.emit()
 
-     recognizer = sr.Recognizer()
+    # Notify main thread that listening started
+     from PyQt6.QtCore import QTimer
+     QTimer.singleShot(0, self.listening_started.emit)
 
-    # Fixed threshold — do NOT use adjust_for_ambient_noise
-    # On this system auto-calibration produces 36000+ which
-    # is way too high for any voice to trigger recording
+     recognizer                          = sr.Recognizer()
      recognizer.energy_threshold         = 300
      recognizer.dynamic_energy_threshold = False
      recognizer.pause_threshold          = 0.8
@@ -217,7 +212,6 @@ class VoiceEngine(QObject):
      try:
         with sr.Microphone(device_index=mic_index) as source:
             print("  [Voice] Listening — speak now...")
-
             try:
                 audio = recognizer.listen(
                     source,
@@ -225,48 +219,65 @@ class VoiceEngine(QObject):
                     phrase_time_limit=15
                 )
                 print("  [Voice] Audio captured, transcribing...")
-
             except sr.WaitTimeoutError:
-                self.listening_stopped.emit()
                 self._listening = False
-                self.error_occurred.emit(
+                QTimer.singleShot(0, self.listening_stopped.emit)
+                self._deliver_error(
                     "No speech detected.\n"
                     "Speak louder or closer to the microphone."
                 )
                 return
 
-     except OSError as e:
-        self.listening_stopped.emit()
-        self._listening = False
-        self.error_occurred.emit(f"Microphone error: {e}")
-        return
-
      except Exception as e:
-        self.listening_stopped.emit()
         self._listening = False
-        self.error_occurred.emit(f"Mic error: {e}")
+        QTimer.singleShot(0, self.listening_stopped.emit)
+        self._deliver_error(f"Microphone error: {e}")
         return
 
-     self.listening_stopped.emit()
      self._listening = False
+     QTimer.singleShot(0, self.listening_stopped.emit)
 
      lang = self._config.get("language", "en-US")
 
      try:
         text = recognizer.recognize_google(audio, language=lang)
         print(f"  [Voice] Recognized: '{text}'")
-        self.speech_recognized.emit(text)
+
+        # Deliver to main thread via QTimer instead of signal
+        # This bypasses cross-thread signal delivery completely
+        self._deliver_speech(text)
 
      except sr.UnknownValueError:
-        self.error_occurred.emit(
+        self._deliver_error(
             "Could not understand speech.\n"
             "Please speak clearly and try again."
         )
      except sr.RequestError as e:
-        self.error_occurred.emit(
+        self._deliver_error(
             f"Google Speech API error: {e}\n"
             f"Check your internet connection."
         )
+
+
+    def _deliver_speech(self, text):
+     """
+    Delivers recognized speech to the main thread.
+    QTimer.singleShot is one of the very few Qt functions
+    that is truly safe to call from any thread.
+    It posts a callback to the main event loop directly.
+     """
+     from PyQt6.QtCore import QTimer
+     QTimer.singleShot(0, lambda: self.speech_recognized.emit(text))
+
+
+    def _deliver_error(self, msg):
+     """
+    Delivers an error message to the main thread.
+    Same mechanism as _deliver_speech.
+    """
+     from PyQt6.QtCore import QTimer
+     QTimer.singleShot(0, lambda: self.error_occurred.emit(msg))
+    
     def start_continuous_listening(self, callback):
         """
         Starts continuous background listening.

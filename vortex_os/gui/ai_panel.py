@@ -355,50 +355,118 @@ class AIPanelWidget(QWidget):
 
     def _toggle_mic(self, checked):
      """
-     Toggles voice input.
-     Clean version — no imports inside lambdas.
+     Simplest possible voice input.
+     Bypasses all signal complexity.
+     Runs recognition, gets text, submits directly.
      """
-     from core.voice_engine import get_voice_engine
-     from PyQt6.QtCore import QTimer, Qt
-
-     engine = get_voice_engine()
+     from PyQt6.QtCore import QTimer
 
      if not checked:
-        # User unchecked the mic button manually
-        try:
-            engine.speech_recognized.disconnect()
-        except Exception:
-            pass
-        try:
-            engine.error_occurred.disconnect()
-        except Exception:
-            pass
-        engine.stop_continuous_listening()
         self.btn_mic.setText("🎤")
         self.input_line.setPlaceholderText("Ask ARIA anything...")
         return
 
-    # ── Mic activated ──────────────────────────────────────
      self.btn_mic.setText("🔴")
      self.input_line.setPlaceholderText("Listening... speak now")
 
-    # Always disconnect previous connections first
-     try:
-        engine.speech_recognized.disconnect()
-     except Exception:
-        pass
-     try:
-         engine.error_occurred.disconnect()
-     except Exception:
-        pass
+    # Run everything in one background thread
+    # No signals, no slots, no cross-thread complexity
+     import threading
+     thread = threading.Thread(
+        target=self._voice_listen_and_submit,
+        daemon=True
+     )
+     thread.start()
 
-    # Connect using AutoConnection — simpler and more reliable
-    # than QueuedConnection when the receiver is a GUI object
-     engine.speech_recognized.connect(self._on_voice_speech)
-     engine.error_occurred.connect(self._on_voice_error)
 
-    # Start listening
-     engine.listen_once()
+    def _voice_listen_and_submit(self):
+     """
+    Runs in background thread.
+     Listens, transcribes, then uses QTimer to submit
+     to ARIA on the main thread.
+      No signals involved at all.
+     """
+     from PyQt6.QtCore import QTimer
+
+     try:
+        import speech_recognition as sr
+
+        recognizer                          = sr.Recognizer()
+        recognizer.energy_threshold         = 300
+        recognizer.dynamic_energy_threshold = False
+        recognizer.pause_threshold          = 0.8
+
+        with sr.Microphone(device_index=0) as source:
+            print("  [Voice] Listening...")
+            try:
+                audio = recognizer.listen(
+                    source,
+                    timeout=10,
+                    phrase_time_limit=15
+                )
+            except sr.WaitTimeoutError:
+                QTimer.singleShot(
+                    0,
+                    lambda: self._on_voice_done(
+                        None, "No speech detected."
+                    )
+                )
+                return
+
+        print("  [Voice] Transcribing...")
+        try:
+            text = recognizer.recognize_google(audio, language="en-US")
+            print(f"  [Voice] Got: '{text}'")
+
+            # Deliver to main thread via QTimer
+            QTimer.singleShot(
+                0,
+                lambda t=text: self._on_voice_done(t, None)
+            )
+
+        except sr.UnknownValueError:
+            QTimer.singleShot(
+                0,
+                lambda: self._on_voice_done(
+                    None, "Could not understand speech."
+                )
+            )
+        except sr.RequestError as e:
+            QTimer.singleShot(
+                0,
+                lambda: self._on_voice_done(
+                    None, f"Speech API error: {e}"
+                )
+            )
+
+     except Exception as e:
+        QTimer.singleShot(
+            0,
+            lambda: self._on_voice_done(None, f"Error: {e}")
+        )
+
+
+    def _on_voice_done(self, text, error):
+     """
+    Called on main thread via QTimer.singleShot.
+    Either submits text to ARIA or shows error.
+     """
+     from PyQt6.QtCore import QTimer
+
+    # Reset mic button
+     self.btn_mic.setChecked(False)
+     self.btn_mic.setText("🎤")
+     self.input_line.setPlaceholderText("Ask ARIA anything...") 
+
+     if error:
+        self._append("VOICE", error, "#ff3355")
+        return
+
+     if text:
+        print(f"  [Voice] Submitting: '{text}'")
+        self.input_line.setText(text)
+        # 100ms delay ensures setText is fully processed
+        QTimer.singleShot(100, self._on_submit)
 
 
     def _on_voice_speech(self, text):
